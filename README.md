@@ -106,12 +106,63 @@ src/
 │   └── ui/                  # Buttons, Modals, Badges, Inputs, Tables, StatCards
 ├── context/                 # AuthContext (roles & user) & ThemeContext
 ├── data/                    # Initial JSON seed datasets (members, plans, payments)
-├── Hooks/                   # Custom hooks (useLocalStorage, useAuth, useForm, etc.)
+├── Hooks/                   # Custom typed React hooks (useLocalStorage, useAuth, useForm, etc.)
 ├── Routing/                 # Route paths & protected route guards
+├── services/                # Data/API Abstraction Layer (localStorage & External API ready)
+├── types/                   # Global TypeScript type contracts & interfaces
 ├── utils/                   # Helper functions (date, currency, validation, formatting)
 ├── Views/                   # Page views (Dashboard, Subscriptions, Attendance, etc.)
-├── App.jsx                  # Main application component
-├── index.css                # Tailwind CSS v4 directives & theme tokens
-├── main.jsx                 # Application entry point
-└── routes.jsx               # Main router configuration
+├── App.tsx                  # Main application component
+├── index.css                # Tailwind CSS v4 directives & @theme tokens
+└── main.tsx                 # Application entry point
 ```
+
+---
+
+## 🏛️ Architecture: Services vs. Hooks vs. Views
+
+To ensure clean code separation and make future migration to external REST/GraphQL APIs effortless, the codebase follows a **3-tier decoupled architecture**:
+
+```
+┌────────────────────────────────────────────────────────┐
+│ 1. Views / Components (UI Layer)                      │
+│    e.g. SubscriptionsPage.tsx, Table.tsx               │
+│    • Responsible for rendering UI layout, buttons, forms│
+└───────────────────────────┬────────────────────────────┘
+                            │ uses hook or service
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│ 2. Hooks Layer (React State & Lifecycle)               │
+│    e.g. useSubscriptionRequests.ts, useAuth.ts        │
+│    • Manages React state: useState, useEffect          │
+│    • Manages loading spinners, errors, re-renders      │
+└───────────────────────────┬────────────────────────────┘
+                            │ calls
+                            ▼
+┌────────────────────────────────────────────────────────┐
+│ 3. Services Layer (Data & API Layer)                   │
+│    e.g. memberService.ts, subscriptionService.ts       │
+│    • Pure TypeScript (NO React code / NO hooks)        │
+│    • Currently: Reads / Writes LocalStorage & JSON     │
+│    • In Production: Calls External Backend / Axios     │
+└────────────────────────────────────────────────────────┘
+```
+
+### 1. `services/` = **Where Data Comes From (Data/API Engine)**
+- **What it is:** Pure TypeScript objects and functions handling CRUD operations (Create, Read, Update, Delete).
+- **Current State:** Reads initial seed data from `src/data/*.json` and persists state to browser `localStorage`.
+- **When switching to a Real Backend API:** You **only** change the internal implementation of the functions in `services/` (e.g. replacing `localStorage` calls with `await apiClient.get('/members')`).
+- **Advantage:** React UI components remain 100% untouched when migrating from mock JSON to a live production database.
+
+### 2. `Hooks/` = **React State & UI Glue**
+- **What it is:** Custom React hooks using `useState`, `useEffect`, and custom state handlers.
+- **Why it is needed:** Services are plain TypeScript functions with no UI reactivity. Hooks bridge the gap by holding reactive state, managing `isLoading` / `error` states, and triggering automatic re-renders when data updates.
+
+### 3. Summary Comparison
+
+| Layer / Folder | Architectural Role | Contains React Code? (`useState`, `useEffect`) | What to change when adding a Backend API? |
+| :--- | :--- | :--- | :--- |
+| **`services/`** | **Data / API Layer** (Axios, Fetch, or LocalStorage/JSON) | ❌ **No** (Pure TypeScript) | ✅ **Yes** — Change function body to `apiClient.get(...)` |
+| **`Hooks/`** | **State Layer** (Loading, Caching, Filtering) | ✅ **Yes** | ❌ **No** — Stays identical |
+| **`Views/`** | **Visual Pages** (Buttons, Cards, Modals) | ✅ **Yes** | ❌ **No** — Stays identical |
+
