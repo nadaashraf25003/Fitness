@@ -12,7 +12,7 @@ export const measurementService = {
     }
   },
 
-  async create(measurement: Omit<BodyMeasurement, 'id'>): Promise<BodyMeasurement> {
+  async create(measurement: Omit<BodyMeasurement, 'id' | 'bmi' | 'bmiCategory'>): Promise<BodyMeasurement> {
     try {
       const response = await apiClient.post('/measurements', measurement);
       return response.data;
