@@ -22,11 +22,11 @@ export const authService = {
 
   logout(): void {
     apiClient.logout();
-    setStoredItem(USER_STORAGE_KEY, null);
+    setStoredItem<User | null>(USER_STORAGE_KEY, null);
   },
 
   getCurrentUser(): User | null {
-    return getStoredItem<User>(USER_STORAGE_KEY, null);
+    return getStoredItem<User | null>(USER_STORAGE_KEY, null);
   },
 
   getToken(): string | null {
