@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "backend": "cd backend && .\\.venv\\Scripts\\uvicorn.exe app.main:app --reload --host 0.0.0.0 --port 8000",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
