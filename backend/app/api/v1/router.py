@@ -6,6 +6,7 @@ from app.api.v1.attendance import router as attendance_router
 from app.api.v1.measurements import router as measurements_router
 from app.api.v1.trainers import router as trainers_router
 from app.api.v1.reports import router as reports_router
+from app.api.v1.payments import router as payments_router
 from app.api.v1.user_module import router as user_module_router
 from app.api.v1.reception import router as reception_router
 from app.api.v1.dashboard import router as dashboard_router
@@ -19,6 +20,7 @@ api_router.include_router(plans_router)
 api_router.include_router(attendance_router)
 api_router.include_router(measurements_router)
 api_router.include_router(trainers_router)
+api_router.include_router(payments_router)
 api_router.include_router(reports_router, prefix="/admin")
 api_router.include_router(dashboard_router, prefix="/admin")
 api_router.include_router(admin_module_router, prefix="/admin")
