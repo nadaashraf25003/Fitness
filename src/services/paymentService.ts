@@ -2,7 +2,27 @@ import { PaymentRecord } from '../types/subscription.types';
 import { apiClient } from './apiClient';
 
 export const paymentService = {
-  async getIncomeReport(branchId: number = 1): Promise<PaymentRecord[]> {
+  async getAll(branchId: number = 1): Promise<PaymentRecord[]> {
+    try {
+      const response = await apiClient.get(`/payments?branch_id=${branchId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch payments:', error);
+      throw error;
+    }
+  },
+
+  async getByMemberId(memberId: string): Promise<PaymentRecord[]> {
+    try {
+      const response = await apiClient.get(`/payments/member/${memberId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch member payments:', error);
+      throw error;
+    }
+  },
+
+  async getIncomeReport(branchId: number = 1): Promise<any> {
     try {
       const response = await apiClient.get(`/admin/report/income/${branchId}`);
       return response.data;
@@ -40,11 +60,6 @@ export const paymentService = {
       console.error('Failed to fetch expired subscriptions:', error);
       throw error;
     }
-  },
-
-  async getAll(): Promise<PaymentRecord[]> {
-    // Default to income report for all payments
-    return this.getIncomeReport();
   },
 
   async create(payment: Omit<PaymentRecord, 'id'>): Promise<PaymentRecord> {

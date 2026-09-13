@@ -5,19 +5,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.database import Base, engine, SessionLocal
-from app.data.seed import seed_initial_data
-
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: create tables and seed initial records
+    # Startup: create tables
     Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
-    try:
-        seed_initial_data(db)
-    finally:
-        db.close()
     yield
     # Shutdown logic (if any)
 

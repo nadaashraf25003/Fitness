@@ -71,7 +71,7 @@ export const PaymentsPage: React.FC = () => {
 
   if (error) {
     return (
-      <div className="text-red-600 p-4">
+      <div className="text-red-600 p-4 bg-red-50 rounded-lg">
         <p>Failed to load payments: {error}</p>
       </div>
     );

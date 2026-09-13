@@ -10,26 +10,35 @@ import { Spinner } from '../../Components/ui/Spinner';
 export const MeasurementsPage: React.FC = () => {
   const { user } = useAuth();
   const [selectedMemberId] = useState<string>(user?.id || 'mem-101');
+  const [showModal, setShowModal] = useState(false);
   
   const { measurements, loading, error } = useMeasurements(selectedMemberId);
 
-  // Prepare chart data from measurements
-  const chartData = measurements
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .map((m, index) => ({
-      label: `Week ${(index + 1) * 2}`,
-      value: m.weightKg,
-    }));
+  // Prepare chart data from measurements - create a sorted copy without mutation
+  const sortedMeasurements = [...measurements].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+  
+  const chartData = sortedMeasurements.map((m, index) => ({
+    label: `Week ${(index + 1) * 2}`,
+    value: m.weightKg,
+  }));
 
   // Calculate stats from measurements
   const latestMeasurement = measurements[0];
   const oldestMeasurement = measurements[measurements.length - 1];
+  
   const weightChange = latestMeasurement && oldestMeasurement 
     ? -(oldestMeasurement.weightKg - latestMeasurement.weightKg).toFixed(1)
     : '0';
-  const bodyFatChange = latestMeasurement && oldestMeasurement 
-    ? -(oldestMeasurement.bodyFatPercentage! - latestMeasurement.bodyFatPercentage!).toFixed(1)
-    : '0';
+  
+  // Handle optional bodyFatPercentage
+  const bodyFatChange = 
+    latestMeasurement?.bodyFatPercentage !== undefined && 
+    oldestMeasurement?.bodyFatPercentage !== undefined
+      ? -(oldestMeasurement.bodyFatPercentage - latestMeasurement.bodyFatPercentage).toFixed(1)
+      : null;
+  
   const healthyBMIPercentage = measurements.filter(m => 
     m.bmiCategory === 'normal' || m.bmiCategory === 'underweight'
   ).length > 0 ? '100' : '0';
@@ -64,7 +73,11 @@ export const MeasurementsPage: React.FC = () => {
           </p>
         </div>
 
-        <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />}>
+        <Button 
+          variant="primary" 
+          leftIcon={<Plus className="w-4 h-4" />}
+          onClick={() => setShowModal(true)}
+        >
           Log Measurement Session
         </Button>
       </div>
@@ -80,10 +93,10 @@ export const MeasurementsPage: React.FC = () => {
         />
         <StatCard
           title="Body Fat Reduction"
-          value={`${bodyFatChange}%`}
-          subtitle="Progress in muscle definition"
+          value={bodyFatChange ? `${bodyFatChange}%` : 'No Data'}
+          subtitle={bodyFatChange ? 'Progress in muscle definition' : 'Not recorded in this period'}
           icon={<Percent className="w-5 h-5" />}
-          trend={{ value: bodyFatChange > '0' ? 'Improving' : 'Increasing', isPositive: parseFloat(bodyFatChange) < 0 }}
+          trend={bodyFatChange ? { value: parseFloat(bodyFatChange) < 0 ? 'Improving' : 'Increasing', isPositive: parseFloat(bodyFatChange) < 0 } : undefined}
         />
         <StatCard
           title="Healthy BMI Status"
@@ -105,6 +118,23 @@ export const MeasurementsPage: React.FC = () => {
       ) : (
         <div className="bg-surface rounded-lg p-8 text-center text-text-muted">
           <p>No measurements recorded yet. Start tracking to see progress!</p>
+        </div>
+      )}
+
+      {/* Measurement Modal Placeholder */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-surface rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-bold mb-4">Log New Measurement</h3>
+            <p className="text-text-muted mb-4">Measurement form will be implemented here</p>
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => setShowModal(false)}
+            >
+              Close
+            </Button>
+          </div>
         </div>
       )}
     </div>

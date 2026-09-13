@@ -44,3 +44,17 @@ class ExpiredSubscriptionItem(BaseModel):
     name: str
     phone: str
     end_date: str
+
+
+class PaymentResponse(BaseModel):
+    id: str
+    branch_id: Optional[int] = 1
+    member_id: str
+    member_name: str
+    subscription_id: str
+    amount: float
+    date: str
+    method: str = "cash"
+    status: str = "paid"
+
+    model_config = ConfigDict(from_attributes=True)
