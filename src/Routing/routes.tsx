@@ -8,8 +8,7 @@ import { LoginPage } from '../Views/auth/LoginPage';
 // import { DashboardPage } from '../Views/dashboard/DashboardPage';
 // import { SubscriptionsPage } from '../Views/subscriptions/SubscriptionsPage';
 // import { SubscriptionRequestsInbox } from '../Views/subscriptions/SubscriptionRequestsInbox';
-// import { AttendancePage } from '../Views/attendance/AttendancePage';
-// import { TrainersPage } from '../Views/trainers/TrainersPage';
+import { AttendancePage } from '../Views/attendance/AttendancePage';
 import { MeasurementsPage } from '../Views/measurements/MeasurementsPage';
 import { PaymentsPage } from '../Views/payments/PaymentsPage';
 // import { NotFoundPage } from '../Views/errors/NotFoundPage';
@@ -28,9 +27,9 @@ export const AppRoutes: React.FC = () => {
       {/* 2. Authenticated Staff & Admin Routes */}
       <Route element={<ProtectedRoute />}>
         <Route element={<PageWrapper />}>
-          {/* <Route path={PATHS.DASHBOARD} element={<DashboardPage />} />
+          {/* <Route path={PATHS.DASHBOARD} element={<DashboardPage />} /> */}
           <Route path={PATHS.ATTENDANCE} element={<AttendancePage />} />
-          <Route path={PATHS.TRAINERS} element={<TrainersPage />} /> */}
+          {/* <Route path={PATHS.TRAINERS} element={<TrainersPage />} /> */}
           <Route path={PATHS.MEASUREMENTS} element={<MeasurementsPage />} />
         </Route>
       </Route>

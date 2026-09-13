@@ -11,6 +11,12 @@ export function formatDate(dateString: string | Date | undefined): string {
 
 export function formatTime(timeString: string | Date | undefined): string {
   if (!timeString) return 'N/A';
+  if (/^\d{1,2}:\d{2}$/.test(String(timeString))) {
+    const [hours, minutes] = String(timeString).split(':').map(Number);
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    return `${String(displayHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${period}`;
+  }
   const date = new Date(timeString);
   if (isNaN(date.getTime())) return String(timeString);
   return date.toLocaleTimeString('en-US', {
@@ -21,7 +27,23 @@ export function formatTime(timeString: string | Date | undefined): string {
 
 export function formatDateTime(dateTimeString: string | Date | undefined): string {
   if (!dateTimeString) return 'N/A';
+  if (/^\d{1,2}:\d{2}$/.test(String(dateTimeString))) {
+    return formatTime(dateTimeString);
+  }
   return `${formatDate(dateTimeString)} at ${formatTime(dateTimeString)}`;
+}
+
+export function formatAttendanceTime(timeStr?: string | null, dateStr?: string | null): string {
+  if (!timeStr) return '--:--';
+  const formattedTime = formatTime(timeStr);
+  if (dateStr) {
+    const today = new Date().toISOString().split('T')[0];
+    if (dateStr === today) {
+      return `Today, ${formattedTime}`;
+    }
+    return `${formatDate(dateStr)}, ${formattedTime}`;
+  }
+  return formattedTime;
 }
 
 export function getDaysRemaining(endDateString: string): number {
