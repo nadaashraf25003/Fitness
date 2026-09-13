@@ -1,5 +1,6 @@
 from typing import Union, Optional
 from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
 
 
 class PeriodInfo(BaseModel):
@@ -57,4 +58,8 @@ class PaymentResponse(BaseModel):
     method: str = "cash"
     status: str = "paid"
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )

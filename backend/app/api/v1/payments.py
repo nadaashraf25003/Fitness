@@ -1,7 +1,8 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
 
 from app.api.deps import get_db, require_roles
 from app.models.user import User
@@ -20,6 +21,11 @@ class PaymentCreate(BaseModel):
     method: str = "cash"
     status: str = "paid"
     branch_id: Optional[int] = 1
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+    )
 
 
 @router.get("", response_model=List[PaymentResponse])
