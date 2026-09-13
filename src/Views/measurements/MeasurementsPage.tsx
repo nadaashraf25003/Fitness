@@ -6,13 +6,14 @@ import { StatCard } from '../../Components/ui/StatCard';
 import { useMeasurements } from '../../Hooks/useMeasurements';
 import { useAuth } from '../../Hooks/useAuth';
 import { Spinner } from '../../Components/ui/Spinner';
+import { RecordMeasurementModal } from './RecordMeasurementModal';
 
 export const MeasurementsPage: React.FC = () => {
   const { user } = useAuth();
   const [selectedMemberId] = useState<string>(user?.id || 'mem-101');
   const [showModal, setShowModal] = useState(false);
   
-  const { measurements, loading, error } = useMeasurements(selectedMemberId);
+  const { measurements, loading, error, addMeasurement } = useMeasurements(selectedMemberId);
 
   // Prepare chart data from measurements - create a sorted copy without mutation
   const sortedMeasurements = [...measurements].sort(
@@ -25,8 +26,8 @@ export const MeasurementsPage: React.FC = () => {
   }));
 
   // Calculate stats from measurements
-  const latestMeasurement = measurements[0];
-  const oldestMeasurement = measurements[measurements.length - 1];
+  const latestMeasurement = sortedMeasurements[sortedMeasurements.length - 1];
+  const oldestMeasurement = sortedMeasurements[0];
   
   const weightChange = latestMeasurement && oldestMeasurement 
     ? -(oldestMeasurement.weightKg - latestMeasurement.weightKg).toFixed(1)
@@ -89,14 +90,14 @@ export const MeasurementsPage: React.FC = () => {
           value={`${weightChange} kg`}
           subtitle="From baseline to latest"
           icon={<Scale className="w-5 h-5" />}
-          trend={{ value: weightChange > '0' ? 'Weight Loss!' : 'Gaining', isPositive: parseFloat(weightChange) < 0 }}
+          trend={{ value: Number(weightChange) < 0 ? 'Weight Loss!' : 'Gaining', isPositive: Number(weightChange) < 0 }}
         />
         <StatCard
           title="Body Fat Reduction"
           value={bodyFatChange ? `${bodyFatChange}%` : 'No Data'}
           subtitle={bodyFatChange ? 'Progress in muscle definition' : 'Not recorded in this period'}
           icon={<Percent className="w-5 h-5" />}
-          trend={bodyFatChange ? { value: parseFloat(bodyFatChange) < 0 ? 'Improving' : 'Increasing', isPositive: parseFloat(bodyFatChange) < 0 } : undefined}
+          trend={bodyFatChange ? { value: Number(bodyFatChange) < 0 ? 'Improving' : 'Increasing', isPositive: Number(bodyFatChange) < 0 } : undefined}
         />
         <StatCard
           title="Healthy BMI Status"
@@ -121,22 +122,12 @@ export const MeasurementsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Measurement Modal Placeholder */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-surface rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-lg font-bold mb-4">Log New Measurement</h3>
-            <p className="text-text-muted mb-4">Measurement form will be implemented here</p>
-            <Button 
-              variant="outline" 
-              className="w-full"
-              onClick={() => setShowModal(false)}
-            >
-              Close
-            </Button>
-          </div>
-        </div>
-      )}
+      <RecordMeasurementModal
+        isOpen={showModal}
+        memberId={selectedMemberId}
+        onClose={() => setShowModal(false)}
+        onSubmit={addMeasurement}
+      />
     </div>
   );
 };
