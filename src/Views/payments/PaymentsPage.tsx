@@ -4,11 +4,13 @@ import { Button } from '../../Components/ui/Button';
 import { StatCard } from '../../Components/ui/StatCard';
 import { DollarSign, Plus, Printer, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { PaymentRecord } from '../../types/subscription.types';
-import { paymentService } from '../../services/paymentService';
+import { usePayments } from '../../Hooks/usePayments';
 import { formatCurrency } from '../../utils/currencyUtils';
+import { Spinner } from '../../Components/ui/Spinner';
 
 export const PaymentsPage: React.FC = () => {
-  const [payments] = useState<PaymentRecord[]>(paymentService.getAll());
+  const [branchId] = useState(1);
+  const { payments, loading, error } = usePayments(branchId);
 
   const columns: Column<PaymentRecord>[] = [
     {
@@ -32,6 +34,15 @@ export const PaymentsPage: React.FC = () => {
       render: (p) => <span className="text-xs text-text-muted">{p.date}</span>,
     },
     {
+      key: 'status',
+      header: 'Status',
+      render: (p) => (
+        <span className={`text-xs font-semibold ${p.status === 'paid' ? 'text-emerald-500' : 'text-amber-500'}`}>
+          {p.status?.toUpperCase()}
+        </span>
+      ),
+    },
+    {
       key: 'actions',
       header: 'Receipt',
       render: (p) => (
@@ -41,6 +52,30 @@ export const PaymentsPage: React.FC = () => {
       ),
     },
   ];
+
+  // Calculate totals from payments
+  const totalRevenue = payments.reduce((sum, p) => sum + (p.status === 'paid' ? p.amount : 0), 0);
+  const paidInvoices = payments.filter((p) => p.status === 'paid').length;
+  const pendingInvoices = payments.filter((p) => p.status !== 'paid').length;
+  const pendingAmount = payments
+    .filter((p) => p.status !== 'paid')
+    .reduce((sum, p) => sum + p.amount, 0);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-96">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-red-600 p-4">
+        <p>Failed to load payments: {error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -65,25 +100,31 @@ export const PaymentsPage: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard
           title="Total Monthly Revenue"
-          value="$9,600"
+          value={formatCurrency(totalRevenue)}
           icon={<DollarSign className="w-5 h-5 text-emerald-400" />}
-          trend={{ value: '+14% vs last mo', isPositive: true }}
+          trend={{ value: `${payments.length} transactions`, isPositive: true }}
         />
         <StatCard
           title="Paid Invoices"
-          value="48"
+          value={paidInvoices.toString()}
           icon={<CheckCircle2 className="w-5 h-5 text-emerald-400" />}
         />
         <StatCard
           title="Pending / Overdue Invoices"
-          value="3"
-          subtitle="Totaling $377"
+          value={pendingInvoices.toString()}
+          subtitle={`Totaling ${formatCurrency(pendingAmount)}`}
           icon={<AlertTriangle className="w-5 h-5 text-rose-400" />}
         />
       </div>
 
       {/* Payments Ledger Table */}
-      <Table columns={columns} data={payments} keyExtractor={(p) => p.id} />
+      {payments.length > 0 ? (
+        <Table columns={columns} data={payments} keyExtractor={(p) => p.id} />
+      ) : (
+        <div className="bg-surface rounded-lg p-8 text-center text-text-muted">
+          <p>No payments recorded yet.</p>
+        </div>
+      )}
     </div>
   );
 };

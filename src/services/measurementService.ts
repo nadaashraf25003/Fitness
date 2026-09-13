@@ -1,26 +1,24 @@
 import { BodyMeasurement } from '../types/measurement.types';
-import { getStoredItem, setStoredItem } from '../utils/storageUtils';
-import measurementsSeed from '../data/measurements.json';
-
-const STORAGE_KEY = 'gym_measurements';
+import { apiClient } from './apiClient';
 
 export const measurementService = {
-  getAll(): BodyMeasurement[] {
-    return getStoredItem<BodyMeasurement[]>(STORAGE_KEY, measurementsSeed as BodyMeasurement[]);
+  async getByMemberId(memberId: string): Promise<BodyMeasurement[]> {
+    try {
+      const response = await apiClient.get(`/measurements/member/${memberId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch measurements:', error);
+      throw error;
+    }
   },
 
-  getByMemberId(memberId: string): BodyMeasurement[] {
-    return this.getAll().filter((m) => m.memberId === memberId);
-  },
-
-  create(measurement: Omit<BodyMeasurement, 'id'>): BodyMeasurement {
-    const list = this.getAll();
-    const newEntry: BodyMeasurement = {
-      ...measurement,
-      id: `meas-${Date.now()}`,
-    };
-    list.unshift(newEntry);
-    setStoredItem(STORAGE_KEY, list);
-    return newEntry;
+  async create(measurement: Omit<BodyMeasurement, 'id'>): Promise<BodyMeasurement> {
+    try {
+      const response = await apiClient.post('/measurements', measurement);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to create measurement:', error);
+      throw error;
+    }
   },
 };
