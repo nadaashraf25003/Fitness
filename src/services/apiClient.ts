@@ -8,7 +8,7 @@ class APIClient {
   private token: string | null = null;
 
   constructor() {
-    this.token = getStoredItem<string>('auth_token', null);
+    this.token = getStoredItem<string | null>('auth_token', null);
 
     this.client = axios.create({
       baseURL: API_BASE_URL,
@@ -48,7 +48,7 @@ class APIClient {
 
   logout() {
     this.token = null;
-    setStoredItem('auth_token', null);
+    setStoredItem<string | null>('auth_token', null);
   }
 
   get(url: string, config?: any) {
