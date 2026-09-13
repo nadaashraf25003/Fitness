@@ -27,7 +27,7 @@ export function useMeasurements(memberId: string) {
     }
   }, [memberId]);
 
-  const addMeasurement = async (measurement: Omit<BodyMeasurement, 'id'>) => {
+  const addMeasurement = async (measurement: Omit<BodyMeasurement, 'id' | 'bmi' | 'bmiCategory'>) => {
     try {
       const newMeasurement = await measurementService.create(measurement);
       setMeasurements((prev) => [newMeasurement, ...prev]);
