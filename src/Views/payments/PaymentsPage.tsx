@@ -7,10 +7,12 @@ import { PaymentRecord } from '../../types/subscription.types';
 import { usePayments } from '../../Hooks/usePayments';
 import { formatCurrency } from '../../utils/currencyUtils';
 import { Spinner } from '../../Components/ui/Spinner';
+import { RecordPaymentModal } from './RecordPaymentModal';
 
 export const PaymentsPage: React.FC = () => {
   const [branchId] = useState(1);
-  const { payments, loading, error } = usePayments(branchId);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { payments, loading, error, addPayment } = usePayments(branchId);
 
   const columns: Column<PaymentRecord>[] = [
     {
@@ -91,7 +93,11 @@ export const PaymentsPage: React.FC = () => {
           </p>
         </div>
 
-        <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />}>
+        <Button
+          variant="primary"
+          leftIcon={<Plus className="w-4 h-4" />}
+          onClick={() => setIsModalOpen(true)}
+        >
           Record Transaction
         </Button>
       </div>
@@ -125,6 +131,12 @@ export const PaymentsPage: React.FC = () => {
           <p>No payments recorded yet.</p>
         </div>
       )}
+
+      <RecordPaymentModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={addPayment}
+      />
     </div>
   );
 };
