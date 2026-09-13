@@ -1,16 +1,28 @@
-export type UserRole = 'admin' | 'staff' | 'member';
+export type UserRole = 'admin' | 'staff' | 'member' | 'reception';
 
 export interface User {
   id: string;
   name: string;
   email: string;
   role: UserRole;
-  avatarUrl?: string;
+  avatarUrl?: string | null;
 }
 
 export interface LoginCredentials {
   email: string;
-  pass: string;
+  pass?: string;
+  password?: string;
+}
+
+export interface AuthResponse {
+  accessToken: string;
+  tokenType: string;
+  user: User;
+}
+
+export interface LoginResult {
+  success: boolean;
+  error?: string;
 }
 
 export interface AuthContextType {
@@ -18,7 +30,10 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isAdmin: boolean;
   isStaff: boolean;
+  isReception: boolean;
   isLoading: boolean;
-  login: (credentials: LoginCredentials) => Promise<boolean>;
+  login: (credentials: LoginCredentials) => Promise<LoginResult>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
 }
+

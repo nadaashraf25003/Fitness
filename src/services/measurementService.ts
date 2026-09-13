@@ -4,7 +4,7 @@ import { apiClient } from './apiClient';
 export const measurementService = {
   async getByMemberId(memberId: string): Promise<BodyMeasurement[]> {
     try {
-      const response = await apiClient.get(`/measurements/member/${memberId}`);
+      const response = await apiClient.get(`/fitness/measurements/member/${memberId}`);
       return response.data;
     } catch (error: any) {
       console.error('Failed to fetch measurements:', error);
@@ -14,7 +14,7 @@ export const measurementService = {
 
   async create(measurement: Omit<BodyMeasurement, 'id'>): Promise<BodyMeasurement> {
     try {
-      const response = await apiClient.post('/measurements', measurement);
+      const response = await apiClient.post('/fitness/measurements', measurement);
       return response.data;
     } catch (error: any) {
       console.error('Failed to create measurement:', error);
