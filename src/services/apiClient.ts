@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import { getStoredItem } from '../utils/storageUtils';
 
 // Base backend URL configured via .env (default: http://localhost:8000)
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -14,9 +15,10 @@ export const apiClient: AxiosInstance = axios.create({
 // Request Interceptor: Attach JWT Bearer Token to all outgoing requests
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem('gym_jwt_token');
+    const token = getStoredItem<string | null>('gym_jwt_token', null) || localStorage.getItem('gym_jwt_token');
     if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+      const cleanToken = token.startsWith('"') && token.endsWith('"') ? token.slice(1, -1) : token;
+      config.headers.Authorization = `Bearer ${cleanToken}`;
     }
     return config;
   },
