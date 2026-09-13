@@ -3,10 +3,10 @@ import { Modal } from '../ui/Modal';
 import { FormInput } from '../ui/FormInput';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
-import { subscriptionService } from '../../services/subscriptionService';
 import { SubscriptionRequest } from '../../types/subscription.types';
 import { Search, CheckCircle2, Clock, XCircle, Mail, Hash, User } from 'lucide-react';
 import { formatDate } from '../../utils/dateUtils';
+import { subscriptionService } from '../../services';
 
 interface CheckStatusModalProps {
   isOpen: boolean;
@@ -26,10 +26,10 @@ export const CheckStatusModal: React.FC<CheckStatusModalProps> = ({ isOpen, onCl
     const cleanQuery = query.toLowerCase().trim();
 
     const match = allRequests.find(
-      (r) =>
-        r.email.toLowerCase() === cleanQuery ||
-        r.id.toLowerCase() === cleanQuery ||
-        r.phone.replace(/[^0-9]/g, '') === cleanQuery.replace(/[^0-9]/g, '')
+      (r: any) =>
+        r.email?.toLowerCase() === cleanQuery ||
+        r.id?.toLowerCase() === cleanQuery ||
+        r.phone?.replace(/[^0-9]/g, '') === cleanQuery.replace(/[^0-9]/g, '')
     );
 
     setFoundRequest(match || null);

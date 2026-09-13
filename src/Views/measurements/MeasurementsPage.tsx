@@ -29,14 +29,14 @@ export const MeasurementsPage: React.FC = () => {
   const oldestMeasurement = measurements[measurements.length - 1];
   
   const weightChange = latestMeasurement && oldestMeasurement 
-    ? -(oldestMeasurement.weightKg - latestMeasurement.weightKg).toFixed(1)
+    ? (-(oldestMeasurement.weightKg - latestMeasurement.weightKg)).toFixed(1)
     : '0';
   
   // Handle optional bodyFatPercentage
   const bodyFatChange = 
     latestMeasurement?.bodyFatPercentage !== undefined && 
     oldestMeasurement?.bodyFatPercentage !== undefined
-      ? -(oldestMeasurement.bodyFatPercentage - latestMeasurement.bodyFatPercentage).toFixed(1)
+      ? (-(oldestMeasurement.bodyFatPercentage - latestMeasurement.bodyFatPercentage)).toFixed(1)
       : null;
   
   const healthyBMIPercentage = measurements.filter(m => 
