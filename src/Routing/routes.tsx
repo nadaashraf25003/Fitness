@@ -6,9 +6,10 @@ import { PageWrapper } from '../Components/layout/PageWrapper';
 import { LoginPage } from '../Views/auth/LoginPage';
 // import { RegisterPage } from '../Views/auth/RegisterPage';
 // import { DashboardPage } from '../Views/dashboard/DashboardPage';
-// import { SubscriptionsPage } from '../Views/subscriptions/SubscriptionsPage';
-// import { SubscriptionRequestsInbox } from '../Views/subscriptions/SubscriptionRequestsInbox';
+import { SubscriptionsPage } from '../Views/subscriptions/SubscriptionsPage';
+import { SubscriptionRequestsInbox } from '../Views/subscriptions/SubscriptionRequestsInbox';
 import { AttendancePage } from '../Views/attendance/AttendancePage';
+import { TrainersPage } from '../Views/trainers/TrainersPage';
 import { MeasurementsPage } from '../Views/measurements/MeasurementsPage';
 import { PaymentsPage } from '../Views/payments/PaymentsPage';
 // import { NotFoundPage } from '../Views/errors/NotFoundPage';
@@ -29,7 +30,7 @@ export const AppRoutes: React.FC = () => {
         <Route element={<PageWrapper />}>
           {/* <Route path={PATHS.DASHBOARD} element={<DashboardPage />} /> */}
           <Route path={PATHS.ATTENDANCE} element={<AttendancePage />} />
-          {/* <Route path={PATHS.TRAINERS} element={<TrainersPage />} /> */}
+          <Route path={PATHS.TRAINERS} element={<TrainersPage />} />
           <Route path={PATHS.MEASUREMENTS} element={<MeasurementsPage />} />
         </Route>
       </Route>
@@ -37,8 +38,8 @@ export const AppRoutes: React.FC = () => {
       {/* 3. Strict Admin-Only Routes */}
       <Route element={<ProtectedRoute adminOnly={true} />}>
         <Route element={<PageWrapper />}>
-          {/* <Route path={PATHS.SUBSCRIPTIONS} element={<SubscriptionsPage />} />
-          <Route path={PATHS.SUBSCRIPTION_REQUESTS} element={<SubscriptionRequestsInbox />} /> */}
+          <Route path={PATHS.SUBSCRIPTIONS} element={<SubscriptionsPage />} />
+          <Route path={PATHS.SUBSCRIPTION_REQUESTS} element={<SubscriptionRequestsInbox />} />
           <Route path={PATHS.PAYMENTS} element={<PaymentsPage />} />
         </Route>
       </Route>
