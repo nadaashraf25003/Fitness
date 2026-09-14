@@ -1,8 +1,13 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { getStoredItem } from '../utils/storageUtils';
 
-// Base backend URL configured via .env (default: http://localhost:8000)
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+// Base backend URL configured via .env (in production on Vercel it uses relative path '')
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL !== undefined
+    ? import.meta.env.VITE_API_BASE_URL
+    : import.meta.env.PROD
+    ? ''
+    : 'http://localhost:8000';
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
