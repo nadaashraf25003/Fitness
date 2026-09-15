@@ -8,10 +8,11 @@ import { usePayments } from '../../Hooks/usePayments';
 import { formatCurrency } from '../../utils/currencyUtils';
 import { Spinner } from '../../Components/ui/Spinner';
 import { RecordPaymentModal } from './RecordPaymentModal';
-
+import { PaymentReceipt } from './PaymentReceipt';
 export const PaymentsPage: React.FC = () => {
   const [branchId] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<PaymentRecord | null>(null);
   const { payments, loading, error, addPayment } = usePayments(branchId);
 
   const columns: Column<PaymentRecord>[] = [
@@ -48,9 +49,14 @@ export const PaymentsPage: React.FC = () => {
       key: 'actions',
       header: 'Receipt',
       render: (p) => (
-        <Button variant="outline" size="sm" leftIcon={<Printer className="w-3.5 h-3.5" />}>
-          Print Receipt
-        </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<Printer className="w-3.5 h-3.5" />}
+            onClick={() => setSelectedPayment(p)}
+          >
+            Print Receipt
+          </Button>
       ),
     },
   ];
@@ -137,6 +143,19 @@ export const PaymentsPage: React.FC = () => {
         onClose={() => setIsModalOpen(false)}
         onSubmit={addPayment}
       />
+    {selectedPayment && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="relative">
+          <button
+            className="absolute -top-3 -right-3 bg-white rounded-full w-8 h-8 shadow"
+            onClick={() => setSelectedPayment(null)}
+          >
+            ✕
+          </button>
+          <PaymentReceipt payment={selectedPayment} onPrint={() => window.print()} />
+        </div>
+      </div>
+    )}
     </div>
   );
 };

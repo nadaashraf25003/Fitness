@@ -1,13 +1,13 @@
 import React from 'react';
 import { PaymentRecord } from '../../types/subscription.types';
 import { formatCurrency } from '../../utils/currencyUtils';
-
+import { Button } from '../../Components/ui/Button';
 interface PaymentReceiptProps {
   payment: PaymentRecord;
   onPrint?: () => void;
 }
 
-export const PaymentReceipt: React.FC<PaymentReceiptProps> = ({ payment }) => {
+export const PaymentReceipt: React.FC<PaymentReceiptProps> = ({ payment, onPrint }) => {
   return (
     <div className="printable-area p-8 bg-surface rounded-xl border border-border-subtle max-w-lg mx-auto text-text-main">
       <div className="text-center pb-6 border-b border-border-subtle">
@@ -35,6 +35,11 @@ export const PaymentReceipt: React.FC<PaymentReceiptProps> = ({ payment }) => {
         <div className="flex justify-between pt-4 border-t border-border-subtle text-base font-bold">
           <span>Total Paid:</span>
           <span className="text-brand-primary">{formatCurrency(payment.amount)}</span>
+        </div>
+      <div className="flex justify-center pt-4">
+        <Button onClick={onPrint}>
+          Print
+        </Button>
         </div>
       </div>
     </div>
