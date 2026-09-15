@@ -75,11 +75,15 @@ export const memberService = {
   /**
    * Synchronous get for immediate offline/component initial state
    */
-  getAll(params?: { search?: string; status?: string }): Member[] {
+  getAll(params?: { search?: string; status?: string; branch_id?: number; branchId?: number }): Member[] {
     const cached = getStoredItem<Member[]>(STORAGE_KEY, initialMembers);
     this.fetchMembers(params).catch(() => {});
 
     let list = cached;
+    const targetBranch = params?.branch_id || params?.branchId;
+    if (targetBranch) {
+      list = list.filter((m) => (m.branchId || 1) === targetBranch);
+    }
     if (params?.status) {
       list = list.filter((m) => m.status === params.status);
     }
@@ -98,9 +102,13 @@ export const memberService = {
   /**
    * Fetch all members from backend API
    */
-  async fetchMembers(params?: { search?: string; status?: string }): Promise<Member[]> {
+  async fetchMembers(params?: { search?: string; status?: string; branch_id?: number; branchId?: number }): Promise<Member[]> {
     try {
-      const response = await apiClient.get<Member[]>('/fitness/members', { params });
+      const apiParams: any = { ...params };
+      if (params?.branchId && !params.branch_id) {
+        apiParams.branch_id = params.branchId;
+      }
+      const response = await apiClient.get<Member[]>('/fitness/members', { params: apiParams });
       if (Array.isArray(response.data) && response.data.length > 0) {
         setStoredItem(STORAGE_KEY, response.data);
         return response.data;
@@ -110,6 +118,10 @@ export const memberService = {
     }
 
     let list = getStoredItem<Member[]>(STORAGE_KEY, initialMembers);
+    const targetBranch = params?.branch_id || params?.branchId;
+    if (targetBranch) {
+      list = list.filter((m) => (m.branchId || 1) === targetBranch);
+    }
     if (params?.status) {
       list = list.filter((m) => m.status === params.status);
     }

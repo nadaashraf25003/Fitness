@@ -23,7 +23,27 @@ router = APIRouter(tags=["Reception Module"])
 
 
 # -------------------------------------------------------------
-# 0. Check Email Availability (Public & Registration)
+# 0. Gym Branches List (Public & Administrative)
+# -------------------------------------------------------------
+@router.get("/branches")
+def list_branches(db: Session = Depends(get_db)):
+    """List all registered gym branches."""
+    branches = db.query(Branch).order_by(Branch.id.asc()).all()
+    return [
+        {
+            "id": b.id,
+            "name": b.name,
+            "location": b.location,
+            "phone": b.phone,
+            "price_per_month": b.price_per_month,
+            "offers": b.offers,
+        }
+        for b in branches
+    ]
+
+
+# -------------------------------------------------------------
+# 0.1 Check Email Availability (Public & Registration)
 # -------------------------------------------------------------
 @router.get("/check-email")
 @router.post("/check-email")

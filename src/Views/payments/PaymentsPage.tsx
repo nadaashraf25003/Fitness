@@ -2,17 +2,18 @@ import React, { useState } from 'react';
 import { Table, Column } from '../../Components/ui/Table';
 import { Button } from '../../Components/ui/Button';
 import { StatCard } from '../../Components/ui/StatCard';
-import { DollarSign, Plus, Printer, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { DollarSign, Plus, Printer, CheckCircle2, AlertTriangle, Building2, RefreshCw } from 'lucide-react';
 import { PaymentRecord } from '../../types/subscription.types';
 import { usePayments } from '../../Hooks/usePayments';
+import { useBranch } from '../../Hooks/useBranch';
 import { formatCurrency } from '../../utils/currencyUtils';
 import { Spinner } from '../../Components/ui/Spinner';
 import { RecordPaymentModal } from './RecordPaymentModal';
 
 export const PaymentsPage: React.FC = () => {
-  const [branchId] = useState(1);
+  const { selectedBranch: branchId, setSelectedBranch, branchName, branchLocation, branches } = useBranch();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { payments, loading, error, addPayment } = usePayments(branchId);
+  const { payments, loading, error, addPayment, refresh } = usePayments(branchId);
 
   const columns: Column<PaymentRecord>[] = [
     {
@@ -92,13 +93,44 @@ export const PaymentsPage: React.FC = () => {
           </p>
         </div>
 
-        <Button
-          variant="primary"
-          leftIcon={<Plus className="w-4 h-4" />}
-          onClick={() => setIsModalOpen(true)}
-        >
-          Record Transaction
-        </Button>
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Branch Selector Pill */}
+          <div className="flex items-center gap-1 bg-surface-card border border-border-subtle p-1 rounded-xl">
+            {branches.map((b) => (
+              <button
+                key={b.id}
+                type="button"
+                onClick={() => setSelectedBranch(b.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  branchId === b.id
+                    ? 'bg-brand-primary text-black shadow-sm'
+                    : 'text-text-muted hover:text-text-main'
+                }`}
+              >
+                <Building2 className="w-3.5 h-3.5" />
+                <span>Branch {b.id}: {b.location}</span>
+              </button>
+            ))}
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refresh()}
+            isLoading={loading}
+            leftIcon={<RefreshCw className="w-4 h-4" />}
+          >
+            Refresh
+          </Button>
+
+          <Button
+            variant="primary"
+            leftIcon={<Plus className="w-4 h-4" />}
+            onClick={() => setIsModalOpen(true)}
+          >
+            Record Transaction
+          </Button>
+        </div>
       </div>
 
       {/* Financial Stat Cards */}
@@ -127,7 +159,7 @@ export const PaymentsPage: React.FC = () => {
         <Table columns={columns} data={payments} keyExtractor={(p) => p.id} />
       ) : (
         <div className="bg-surface rounded-lg p-8 text-center text-text-muted">
-          <p>No payments recorded yet.</p>
+          <p>No payments recorded yet for {branchName}.</p>
         </div>
       )}
 
@@ -135,6 +167,7 @@ export const PaymentsPage: React.FC = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={addPayment}
+        branchId={branchId}
       />
     </div>
   );

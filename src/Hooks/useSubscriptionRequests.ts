@@ -3,10 +3,8 @@ import { SubscriptionRequest } from '../types/subscription.types';
 import { subscriptionService } from '../services/subscriptionService';
 
 export function useSubscriptionRequests(branchId: number = 1) {
-  const [requests, setRequests] = useState<SubscriptionRequest[]>(() =>
-    subscriptionService.getRequests()
-  );
-  const [loading, setLoading] = useState<boolean>(false);
+  const [requests, setRequests] = useState<SubscriptionRequest[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -34,9 +32,7 @@ export function useSubscriptionRequests(branchId: number = 1) {
     setSuccessMessage(null);
     try {
       await subscriptionService.approveRequest(id);
-      setRequests((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, status: 'approved' as const } : r))
-      );
+      await fetchRequests();
       setSuccessMessage('Subscription request approved & member successfully provisioned!');
     } catch (err: any) {
       setError(err.message || 'Failed to approve request');
@@ -52,9 +48,7 @@ export function useSubscriptionRequests(branchId: number = 1) {
     setSuccessMessage(null);
     try {
       await subscriptionService.rejectRequest(id);
-      setRequests((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, status: 'rejected' as const } : r))
-      );
+      await fetchRequests();
       setSuccessMessage('Subscription request rejected.');
     } catch (err: any) {
       setError(err.message || 'Failed to reject request');

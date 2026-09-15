@@ -9,6 +9,7 @@ export interface Trainer {
   photoUrl?: string;
   isAvailable: boolean;
   assignedMembersCount: number;
+  branchId?: number;
 }
 
 export interface TimeSlot {
@@ -30,4 +31,5 @@ export interface ClassSchedule {
   endTime: string;
   capacity: number;
   enrolled: number;
+  branchId?: number;
 }

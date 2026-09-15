@@ -1,5 +1,5 @@
 from typing import List, Literal, Optional
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
@@ -30,13 +30,15 @@ class PaymentCreate(BaseModel):
 
 @router.get("", response_model=List[PaymentResponse])
 def get_all_payments(
-    branch_id: int = 1,
+    branch_id: Optional[int] = Query(None, description="Filter by branch ID"),
     db: Session = Depends(get_db),
     _: User = Depends(require_roles(["admin", "staff", "reception"])),
 ):
-    """Get all payments for a branch."""
-    payments = db.query(Payment).filter(Payment.branch_id == branch_id).order_by(Payment.date.desc()).all()
-    return payments
+    """Get all payments with optional branch filtering."""
+    query = db.query(Payment)
+    if branch_id:
+        query = query.filter(Payment.branch_id == branch_id)
+    return query.order_by(Payment.date.desc()).all()
 
 
 @router.get("/member/{member_id}", response_model=List[PaymentResponse])

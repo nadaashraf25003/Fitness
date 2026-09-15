@@ -10,6 +10,7 @@ class MemberBase(BaseModel):
     full_name: str
     email: EmailStr
     phone: str
+    branch_id: Optional[int] = 1
     gender: Gender = "other"
     date_of_birth: str
     join_date: str
@@ -34,6 +35,7 @@ class MemberUpdate(BaseModel):
     full_name: Optional[str] = None
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
+    branch_id: Optional[int] = None
     gender: Optional[Gender] = None
     date_of_birth: Optional[str] = None
     join_date: Optional[str] = None

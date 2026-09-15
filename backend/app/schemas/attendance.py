@@ -6,6 +6,7 @@ from pydantic.alias_generators import to_camel
 class CheckInRequest(BaseModel):
     member_id: str
     trainer_name: Optional[str] = None
+    branch_id: Optional[int] = 1
 
     model_config = ConfigDict(
         alias_generator=to_camel,
@@ -25,6 +26,7 @@ class CheckOutRequest(BaseModel):
 
 class AttendanceResponse(BaseModel):
     id: str
+    branch_id: Optional[int] = 1
     member_id: str
     member_name: str
     photo_url: Optional[str] = None

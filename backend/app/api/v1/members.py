@@ -15,11 +15,14 @@ router = APIRouter(prefix="/members", tags=["Members"])
 def get_members(
     search: Optional[str] = Query(None, description="Search by name, email or phone"),
     status: Optional[str] = Query(None, description="Filter by status (active, expiring, expired)"),
+    branch_id: Optional[int] = Query(None, description="Filter by branch ID"),
     db: Session = Depends(get_db),
     _: User = Depends(require_roles(["admin", "staff"])),
 ):
-    """Retrieve members list with search and status filtering."""
+    """Retrieve members list with search, status, and branch filtering."""
     query = db.query(Member)
+    if branch_id:
+        query = query.filter(Member.branch_id == branch_id)
     if status:
         query = query.filter(Member.status == status)
     if search:
@@ -59,6 +62,7 @@ def create_member(
         raise HTTPException(status_code=400, detail="A member with this email already exists")
 
     new_member = Member(
+        branch_id=member_in.branch_id or 1,
         full_name=member_in.full_name,
         email=member_in.email,
         phone=member_in.phone,

@@ -11,9 +11,11 @@ export const attendanceService = {
   /**
    * Fetch today's check-in logs
    */
-  async getToday(): Promise<CheckInEntry[]> {
+  async getToday(branchId?: number): Promise<CheckInEntry[]> {
     try {
-      const response = await apiClient.get<CheckInEntry[]>('/fitness/attendance/today');
+      const response = await apiClient.get<CheckInEntry[]>('/fitness/attendance/today', {
+        params: branchId ? { branch_id: branchId } : undefined,
+      });
       return response.data;
     } catch (error: any) {
       const message = error.response?.data?.detail || error.message || 'Failed to fetch today attendance';
@@ -39,9 +41,11 @@ export const attendanceService = {
   /**
    * Fetch high-level facility visitor statistics
    */
-  async getStats(): Promise<AttendanceStats> {
+  async getStats(branchId?: number): Promise<AttendanceStats> {
     try {
-      const response = await apiClient.get<AttendanceStats>('/fitness/attendance/stats');
+      const response = await apiClient.get<AttendanceStats>('/fitness/attendance/stats', {
+        params: branchId ? { branch_id: branchId } : undefined,
+      });
       return response.data;
     } catch (error: any) {
       const message = error.response?.data?.detail || error.message || 'Failed to fetch attendance stats';
@@ -53,11 +57,12 @@ export const attendanceService = {
   /**
    * Record member check-in timestamp
    */
-  async checkIn(memberId: string, trainerName?: string): Promise<CheckInEntry> {
+  async checkIn(memberId: string, trainerName?: string, branchId?: number): Promise<CheckInEntry> {
     try {
       const response = await apiClient.post<CheckInEntry>('/fitness/attendance/check-in', {
         memberId,
         trainerName: trainerName?.trim() || undefined,
+        branchId: branchId || 1,
       });
       return response.data;
     } catch (error: any) {

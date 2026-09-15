@@ -28,27 +28,47 @@ def parse_id(id_val: Union[int, str], prefix: str = "") -> str:
     return s
 
 
+def find_pending_request(search_id_str: str, db: Session) -> Optional[SubscriptionRequest]:
+    """Find a pending subscription request by ID, prefix, or code."""
+    s = str(search_id_str).strip()
+    clean_id = s.replace("req-", "")
+    return (
+        db.query(SubscriptionRequest)
+        .filter(
+            (SubscriptionRequest.id == s)
+            | (SubscriptionRequest.id == f"req-{s}")
+            | (SubscriptionRequest.id == f"req-{clean_id}")
+            | (SubscriptionRequest.id == clean_id)
+            | (SubscriptionRequest.id.like(f"%{clean_id}"))
+            | (SubscriptionRequest.member_code == clean_id)
+            | (SubscriptionRequest.member_code == s),
+            SubscriptionRequest.status == "pending",
+        )
+        .first()
+    )
+
+
 @router.get("/requests/{branch_id}", response_model=List[PendingRequestListItem])
 def get_pending_requests(
     branch_id: int,
+    status: Optional[str] = None,
     db: Session = Depends(get_db),
     _: User = Depends(require_roles(["admin", "staff"])),
 ):
-    """Admin: Get all pending requests for a specific branch."""
-    pending_list = (
-        db.query(SubscriptionRequest)
-        .filter(
-            SubscriptionRequest.branch_id == branch_id,
-            SubscriptionRequest.status == "pending",
-        )
-        .order_by(SubscriptionRequest.created_at.desc())
-        .all()
+    """Admin: Get all subscription requests for a specific branch directly from database."""
+    query = db.query(SubscriptionRequest).filter(
+        SubscriptionRequest.branch_id == branch_id,
     )
+    if status and status.lower() != "all":
+        query = query.filter(SubscriptionRequest.status == status.lower())
+
+    requests_list = query.order_by(SubscriptionRequest.created_at.desc()).all()
 
     results = []
-    for req in pending_list:
+    for req in requests_list:
         clean_req_id = req.id.replace("req-", "")
-        req_id_val = int(clean_req_id) if clean_req_id.isdigit() else req.id
+        # Preserve original clean string if it has leading zeros, or use integer if clean
+        req_id_val = clean_req_id
 
         code_val = req.member_code
         if not code_val and req.member_id:
@@ -58,11 +78,12 @@ def get_pending_requests(
         if not code_val:
             code_val = req_id_val
 
-        code_num = int(code_val) if str(code_val).isdigit() else code_val
+        code_num = code_val
 
         results.append(
             PendingRequestListItem(
                 request_id=req_id_val,
+                branch_id=req.branch_id or 1,
                 member_name=req.full_name,
                 member_code=code_num,
                 request_type=req.request_type or "new",
@@ -91,21 +112,13 @@ def get_request_details(
 ):
     """Admin: Get full details of a specific pending request."""
     search_id = str(request_id)
-    req = (
-        db.query(SubscriptionRequest)
-        .filter(
-            (SubscriptionRequest.id == search_id)
-            | (SubscriptionRequest.id == f"req-{search_id}"),
-            SubscriptionRequest.status == "pending",
-        )
-        .first()
-    )
+    req = find_pending_request(search_id, db)
 
     if not req:
         return JSONResponse(status_code=404, content={"message": "request not found"})
 
     clean_req_id = req.id.replace("req-", "")
-    req_id_val = int(clean_req_id) if clean_req_id.isdigit() else req.id
+    req_id_val = clean_req_id
 
     mem_id = req.member_id or req.member_code or req_id_val
     clean_mem_id = str(mem_id).replace("mem-", "")
@@ -156,17 +169,25 @@ def approve_request(
 ):
     """Admin: Approve a pending request (new, renew, extend, cancel)."""
     search_id = str(request_id)
-    req = (
-        db.query(SubscriptionRequest)
-        .filter(
-            (SubscriptionRequest.id == search_id)
-            | (SubscriptionRequest.id == f"req-{search_id}"),
-            SubscriptionRequest.status == "pending",
-        )
-        .first()
-    )
+    req = find_pending_request(search_id, db)
 
     if not req:
+        # Check if already approved
+        clean_id = search_id.replace("req-", "")
+        already_approved = (
+            db.query(SubscriptionRequest)
+            .filter(
+                (SubscriptionRequest.id == search_id)
+                | (SubscriptionRequest.id == f"req-{search_id}")
+                | (SubscriptionRequest.id == f"req-{clean_id}")
+                | (SubscriptionRequest.id == clean_id)
+                | (SubscriptionRequest.id.like(f"%{clean_id}")),
+                SubscriptionRequest.status == "approved",
+            )
+            .first()
+        )
+        if already_approved:
+            return {"message": "Request already approved"}
         return JSONResponse(status_code=404, content={"message": "Request not found"})
 
     req_type = (req.request_type or "new").lower()
@@ -181,6 +202,12 @@ def approve_request(
                 .first()
             )
             if existing_member:
+                if req.full_name:
+                    existing_member.full_name = req.full_name
+                if req.email:
+                    existing_member.email = req.email
+                if req.phone:
+                    existing_member.phone = req.phone
                 existing_member.status = "active"
                 existing_member.join_date = req.requested_start_date or today_str
                 new_sub_id = f"sub-{random.randint(1000, 9999)}"
@@ -193,7 +220,7 @@ def approve_request(
                 new_pay = Payment(
                     branch_id=req.branch_id,
                     member_id=existing_member.id,
-                    member_name=existing_member.full_name,
+                    member_name=req.full_name or existing_member.full_name,
                     subscription_id=new_sub_id,
                     amount=req.paid_amount if req.paid_amount is not None else (req.price or 0.0),
                     date=today_str,
@@ -228,7 +255,7 @@ def approve_request(
                 new_pay = Payment(
                     branch_id=req.branch_id,
                     member_id=new_member.id,
-                    member_name=new_member.full_name,
+                    member_name=req.full_name,
                     subscription_id=new_sub_id,
                     amount=req.paid_amount if req.paid_amount is not None else (req.price or 0.0),
                     date=today_str,
@@ -246,6 +273,8 @@ def approve_request(
                 member = db.query(Member).filter(Member.phone == req.phone).first()
 
             if member:
+                if req.full_name:
+                    member.full_name = req.full_name
                 member.status = "active"
                 member.join_date = req.requested_start_date or today_str
                 new_sub_id = f"sub-{random.randint(1000, 9999)}"
@@ -256,7 +285,7 @@ def approve_request(
                 new_pay = Payment(
                     branch_id=req.branch_id,
                     member_id=member.id,
-                    member_name=member.full_name,
+                    member_name=req.full_name or member.full_name,
                     subscription_id=new_sub_id,
                     amount=req.paid_amount if req.paid_amount is not None else (req.price or 0.0),
                     date=today_str,
@@ -274,11 +303,13 @@ def approve_request(
                 member = db.query(Member).filter(Member.phone == req.phone).first()
 
             if member:
+                if req.full_name:
+                    member.full_name = req.full_name
                 new_sub_id = f"sub-{random.randint(1000, 9999)}"
                 new_pay = Payment(
                     branch_id=req.branch_id,
                     member_id=member.id,
-                    member_name=member.full_name,
+                    member_name=req.full_name or member.full_name,
                     subscription_id=new_sub_id,
                     amount=req.paid_amount if req.paid_amount is not None else (req.price or 0.0),
                     date=today_str,
@@ -320,15 +351,7 @@ def reject_request(
 ):
     """Admin: Reject a pending request."""
     search_id = str(request_id)
-    req = (
-        db.query(SubscriptionRequest)
-        .filter(
-            (SubscriptionRequest.id == search_id)
-            | (SubscriptionRequest.id == f"req-{search_id}"),
-            SubscriptionRequest.status == "pending",
-        )
-        .first()
-    )
+    req = find_pending_request(search_id, db)
 
     if not req:
         return JSONResponse(status_code=404, content={"message": "Request not found"})

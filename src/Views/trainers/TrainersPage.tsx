@@ -26,9 +26,13 @@ import {
   Clock,
   Sparkles,
   AlertCircle,
+  Building2,
+  MapPin,
 } from 'lucide-react';
+import { useBranch } from '../../Hooks/useBranch';
 
 export const TrainersPage: React.FC = () => {
+  const { selectedBranch, setSelectedBranch, branchName, branchLocation, branches } = useBranch();
   const {
     trainers,
     schedules,
@@ -44,6 +48,7 @@ export const TrainersPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'cards' | 'schedule'>('cards');
   const [search, setSearch] = useState<string>('');
   const [filterSpecialty, setFilterSpecialty] = useState<string>('all');
+  const [filterBranch, setFilterBranch] = useState<string>(String(selectedBranch));
   const [onlyAvailable, setOnlyAvailable] = useState<boolean>(false);
 
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
@@ -52,6 +57,11 @@ export const TrainersPage: React.FC = () => {
   const [scheduleFocusTrainerId, setScheduleFocusTrainerId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // Keep branch filter in sync if user changes branch globally
+  React.useEffect(() => {
+    setFilterBranch(String(selectedBranch));
+  }, [selectedBranch]);
 
   // New Trainer Form State
   const [newTrainer, setNewTrainer] = useState({
@@ -64,6 +74,7 @@ export const TrainersPage: React.FC = () => {
     photoUrl: '',
     isAvailable: true,
     assignedMembersCount: 0,
+    branchId: selectedBranch,
   });
 
   // Unique specialties for filter dropdown
@@ -75,8 +86,9 @@ export const TrainersPage: React.FC = () => {
       t.specialty.toLowerCase().includes(search.toLowerCase()) ||
       t.email.toLowerCase().includes(search.toLowerCase());
     const matchesSpecialty = filterSpecialty === 'all' || t.specialty === filterSpecialty;
+    const matchesBranch = filterBranch === 'all' || (t.branchId || 1) === Number(filterBranch);
     const matchesAvail = !onlyAvailable || t.isAvailable;
-    return matchesSearch && matchesSpecialty && matchesAvail;
+    return matchesSearch && matchesSpecialty && matchesBranch && matchesAvail;
   });
 
   // Calculate statistics
@@ -115,6 +127,7 @@ export const TrainersPage: React.FC = () => {
           'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300',
         isAvailable: newTrainer.isAvailable,
         assignedMembersCount: Number(newTrainer.assignedMembersCount) || 0,
+        branchId: Number(newTrainer.branchId) || selectedBranch || 1,
       });
 
       setNewTrainer({
@@ -127,6 +140,7 @@ export const TrainersPage: React.FC = () => {
         photoUrl: '',
         isAvailable: true,
         assignedMembersCount: 0,
+        branchId: selectedBranch,
       });
       setShowAddModal(false);
     } catch (err: any) {
@@ -153,6 +167,7 @@ export const TrainersPage: React.FC = () => {
         photoUrl: editingTrainer.photoUrl?.trim() || undefined,
         isAvailable: editingTrainer.isAvailable,
         assignedMembersCount: Number(editingTrainer.assignedMembersCount) || 0,
+        branchId: Number(editingTrainer.branchId) || 1,
       });
       setEditingTrainer(null);
     } catch (err: any) {
@@ -176,7 +191,29 @@ export const TrainersPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Branch Selector Pill */}
+          <div className="flex items-center gap-1 bg-surface-card border border-border-subtle p-1 rounded-xl">
+            {branches.map((b) => (
+              <button
+                key={b.id}
+                type="button"
+                onClick={() => {
+                  setSelectedBranch(b.id);
+                  setFilterBranch(String(b.id));
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  selectedBranch === b.id
+                    ? 'bg-brand-primary text-black shadow-sm'
+                    : 'text-text-muted hover:text-text-main'
+                }`}
+              >
+                <Building2 className="w-3.5 h-3.5" />
+                <span>Branch {b.id}: {b.location}</span>
+              </button>
+            ))}
+          </div>
+
           <Button
             variant="outline"
             onClick={() => refresh()}
@@ -263,7 +300,17 @@ export const TrainersPage: React.FC = () => {
               />
             </div>
 
-            <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+              <select
+                value={filterBranch}
+                onChange={(e) => setFilterBranch(e.target.value)}
+                className="px-3.5 py-2.5 rounded-xl bg-surface-card border border-border-subtle text-text-main text-xs font-medium focus:outline-none focus:border-brand-primary"
+              >
+                <option value="all">All Branches</option>
+                <option value="1">Branch 1: Main (Khanqah)</option>
+                <option value="2">Branch 2: Downtown (City Center)</option>
+              </select>
+
               <select
                 value={filterSpecialty}
                 onChange={(e) => setFilterSpecialty(e.target.value)}
@@ -329,15 +376,21 @@ export const TrainersPage: React.FC = () => {
                         </div>
                       </div>
 
-                      <span
-                        className={`text-[10px] uppercase font-extrabold px-2.5 py-0.5 rounded-full border ${
-                          trainer.isAvailable
-                            ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                            : 'bg-rose-500/15 text-rose-400 border-rose-500/30'
-                        }`}
-                      >
-                        {trainer.isAvailable ? 'Available' : 'Booked'}
-                      </span>
+                      <div className="flex flex-col items-end gap-1">
+                        <span
+                          className={`text-[10px] uppercase font-extrabold px-2.5 py-0.5 rounded-full border ${
+                            trainer.isAvailable
+                              ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                              : 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                          }`}
+                        >
+                          {trainer.isAvailable ? 'Available' : 'Booked'}
+                        </span>
+                        <span className="text-[10px] font-semibold text-text-muted flex items-center gap-1 bg-surface-card px-2 py-0.5 rounded-md border border-border-subtle">
+                          <Building2 className="w-3 h-3 text-brand-primary" />
+                          Branch {(trainer.branchId || 1) === 2 ? '2: Downtown' : '1: Main'}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Bio */}
@@ -443,13 +496,29 @@ export const TrainersPage: React.FC = () => {
             </div>
           )}
 
-          <FormInput
-            label="Full Name"
-            placeholder="e.g. Marcus Thorne"
-            value={newTrainer.fullName}
-            onChange={(e) => setNewTrainer({ ...newTrainer, fullName: e.target.value })}
-            required
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormInput
+              label="Full Name"
+              placeholder="e.g. Marcus Thorne"
+              value={newTrainer.fullName}
+              onChange={(e) => setNewTrainer({ ...newTrainer, fullName: e.target.value })}
+              required
+            />
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+                Assigned Branch
+              </label>
+              <select
+                value={String(newTrainer.branchId || selectedBranch)}
+                onChange={(e) => setNewTrainer({ ...newTrainer, branchId: Number(e.target.value) })}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-surface-card border border-border-subtle text-text-main text-xs font-medium focus:outline-none focus:border-brand-primary"
+              >
+                <option value="1">Branch 1 - Main Branch (Khanqah)</option>
+                <option value="2">Branch 2 - Downtown Branch (City Center)</option>
+              </select>
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormInput
@@ -550,14 +619,32 @@ export const TrainersPage: React.FC = () => {
               </div>
             )}
 
-            <FormInput
-              label="Full Name"
-              value={editingTrainer.fullName}
-              onChange={(e) =>
-                setEditingTrainer({ ...editingTrainer, fullName: e.target.value })
-              }
-              required
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormInput
+                label="Full Name"
+                value={editingTrainer.fullName}
+                onChange={(e) =>
+                  setEditingTrainer({ ...editingTrainer, fullName: e.target.value })
+                }
+                required
+              />
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+                  Assigned Branch
+                </label>
+                <select
+                  value={String(editingTrainer.branchId || 1)}
+                  onChange={(e) =>
+                    setEditingTrainer({ ...editingTrainer, branchId: Number(e.target.value) })
+                  }
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-card border border-border-subtle text-text-main text-xs font-medium focus:outline-none focus:border-brand-primary"
+                >
+                  <option value="1">Branch 1 - Main Branch (Khanqah)</option>
+                  <option value="2">Branch 2 - Downtown Branch (City Center)</option>
+                </select>
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormInput
