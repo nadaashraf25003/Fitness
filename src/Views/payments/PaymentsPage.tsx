@@ -55,7 +55,6 @@ export const PaymentsPage: React.FC = () => {
     },
   ];
 
-  // Calculate totals from payments
   const totalRevenue = payments.reduce((sum, p) => sum + (p.status === 'paid' ? p.amount : 0), 0);
   const paidInvoices = payments.filter((p) => p.status === 'paid').length;
   const pendingInvoices = payments.filter((p) => p.status !== 'paid').length;

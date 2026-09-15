@@ -47,6 +47,6 @@ export interface PaymentRecord {
   subscriptionId: string;
   amount: number;
   date: string;
-  method: 'cash' | 'card' | 'transfer' | 'online';
+  method: 'cash' | 'visa';
   status: 'paid' | 'partial' | 'unpaid';
 }

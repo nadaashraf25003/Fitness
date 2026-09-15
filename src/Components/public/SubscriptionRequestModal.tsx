@@ -12,23 +12,18 @@ import {
   Calendar,
   CreditCard,
   Banknote,
-  Building2,
-  Smartphone,
   ShieldCheck,
   Lock,
-  QrCode,
   Printer,
+  QrCode,
   Sparkles,
   ArrowRight,
   ArrowLeft,
   Receipt,
   Check,
-  Copy,
   RotateCw,
   Send,
   Zap,
-  Fingerprint,
-  ExternalLink,
   Info,
 } from 'lucide-react';
 import { isValidEmail, isValidPhone } from '../../utils/validationUtils';
@@ -39,7 +34,7 @@ interface SubscriptionRequestModalProps {
   selectedPlan: Plan | null;
 }
 
-type PaymentMethodType = 'Credit Card' | 'Apple Pay / Google Pay' | 'InstaPay / Wallet' | 'Bank Transfer' | 'Cash';
+type PaymentMethodType = 'Visa' | 'Cash';
 
 interface CardInfo {
   cardNumber: string;
@@ -62,11 +57,11 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
     email: '',
     phone: '',
     requestedStartDate: new Date().toISOString().split('T')[0],
-    paymentMethod: 'Credit Card' as PaymentMethodType,
+    paymentMethod: 'Visa' as PaymentMethodType,
     notes: '',
   });
 
-  // Credit Card states
+  // Visa card states
   const [cardData, setCardData] = useState<CardInfo>({
     cardNumber: '',
     cardHolder: '',
@@ -76,21 +71,6 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
   });
 
   const [isCardFlipped, setIsCardFlipped] = useState<boolean>(false);
-
-  // InstaPay & Mobile Wallet states
-  const [instapayData, setInstapayData] = useState({
-    walletNumber: '',
-    referenceCode: '',
-  });
-
-  // Bank wire states
-  const [bankData, setBankData] = useState({
-    transferRef: '',
-    senderBank: '',
-  });
-
-  // Apple / Google Pay states
-  const [digitalWalletType, setDigitalWalletType] = useState<'apple' | 'google'>('apple');
 
   // 3D Secure OTP challenge states
   const [otpCode, setOtpCode] = useState<string[]>(['', '', '', '', '', '']);
@@ -121,11 +101,7 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
   // Detect card network brand
   const getCardBrand = (numberStr: string) => {
     const clean = numberStr.replace(/\s/g, '');
-    if (clean.startsWith('4')) return 'visa';
-    if (/^(5[1-5]|2[2-7])/.test(clean)) return 'mastercard';
-    if (/^(34|37)/.test(clean)) return 'amex';
-    if (/^(6011|65)/.test(clean)) return 'discover';
-    return 'generic';
+    return clean.startsWith('4') ? 'visa' : 'generic';
   };
 
   const cardBrand = getCardBrand(cardData.cardNumber);
@@ -146,36 +122,6 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
     }
     setCardData((prev) => ({ ...prev, expiry: raw }));
     if (errors.expiry) setErrors((prev) => ({ ...prev, expiry: '' }));
-  };
-
-  // Demo card autofills
-  const handleFillDemoCard = (type: 'visa' | 'mastercard' | 'amex') => {
-    if (type === 'visa') {
-      setCardData({
-        cardNumber: '4532 8492 1048 9201',
-        cardHolder: (formData.fullName || 'ALEX MORGAN').toUpperCase(),
-        expiry: '09/29',
-        cvv: '849',
-        saveCard: true,
-      });
-    } else if (type === 'mastercard') {
-      setCardData({
-        cardNumber: '5424 1892 4920 7710',
-        cardHolder: (formData.fullName || 'ALEX MORGAN').toUpperCase(),
-        expiry: '11/28',
-        cvv: '321',
-        saveCard: true,
-      });
-    } else {
-      setCardData({
-        cardNumber: '3782 8224 9102 3004',
-        cardHolder: (formData.fullName || 'ALEX MORGAN').toUpperCase(),
-        expiry: '06/30',
-        cvv: '9102',
-        saveCard: true,
-      });
-    }
-    setErrors({});
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -213,10 +159,10 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
   // Validate Step 2 (Payment Form Details)
   const validateStep2 = () => {
     const errs: Record<string, string> = {};
-    if (formData.paymentMethod === 'Credit Card') {
+    if (formData.paymentMethod === 'Visa') {
       const cleanNum = cardData.cardNumber.replace(/\s/g, '');
-      if (!cleanNum || cleanNum.length < 15) {
-        errs.cardNumber = 'Enter a valid 16-digit card number';
+      if (!cleanNum.startsWith('4') || cleanNum.length !== 16) {
+        errs.cardNumber = 'Enter a valid 16-digit Visa card number';
       }
       if (!cardData.cardHolder.trim()) {
         errs.cardHolder = 'Cardholder name is required';
@@ -226,14 +172,6 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
       }
       if (!cardData.cvv || cardData.cvv.length < 3) {
         errs.cvv = '3 or 4-digit CVV required';
-      }
-    } else if (formData.paymentMethod === 'InstaPay / Wallet') {
-      if (!instapayData.walletNumber.trim()) {
-        errs.walletNumber = 'InstaPay address or phone wallet number is required';
-      }
-    } else if (formData.paymentMethod === 'Bank Transfer') {
-      if (!bankData.transferRef.trim()) {
-        errs.transferRef = 'Wire transfer receipt or reference ID required';
       }
     }
     setErrors(errs);
@@ -255,14 +193,14 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
     e.preventDefault();
     if (!validateStep2() || !selectedPlan) return;
 
-    if (formData.paymentMethod === 'Credit Card') {
+    if (formData.paymentMethod === 'Visa') {
       // Show 3D Secure OTP Challenge
       setOtpCode(['', '', '', '', '', '']);
       setOtpTimer(45);
       setOtpError('');
       setCurrentStep('otp');
     } else {
-      // Direct gateway processing for Apple Pay, InstaPay, Bank Wire, Cash
+      // Reserve the membership for payment at the front desk.
       triggerGatewayProcessing();
     }
   };
@@ -319,15 +257,8 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
 
     // Stage 2: Clearing Network
     setProcessingProgress(50);
-    if (formData.paymentMethod === 'Credit Card') {
-      const brandName = cardBrand === 'visa' ? 'Visa' : cardBrand === 'mastercard' ? 'Mastercard' : 'Amex';
-      setProcessingStatus(`Routing token through ${brandName} 3D-Secure 2.0 Network...`);
-    } else if (formData.paymentMethod === 'Apple Pay / Google Pay') {
-      setProcessingStatus(`Authenticating biometric token via ${digitalWalletType === 'apple' ? 'Apple Pay Touch/Face ID' : 'Google Wallet'}...`);
-    } else if (formData.paymentMethod === 'InstaPay / Wallet') {
-      setProcessingStatus(`Querying Instant Payment Network (IPN) for wallet ${instapayData.walletNumber}...`);
-    } else if (formData.paymentMethod === 'Bank Transfer') {
-      setProcessingStatus(`Validating SWIFT / IBAN settlement ref: ${bankData.transferRef}...`);
+    if (formData.paymentMethod === 'Visa') {
+      setProcessingStatus('Routing token through Visa 3D-Secure 2.0 Network...');
     } else {
       setProcessingStatus('Securing front desk reservation & locking guaranteed pricing...');
     }
@@ -345,15 +276,8 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
 
     // Determine descriptive payment method label for database & inbox
     let paymentDetailLabel: string = formData.paymentMethod;
-    if (formData.paymentMethod === 'Credit Card') {
-      const brandUpper = cardBrand.toUpperCase();
-      paymentDetailLabel = `${brandUpper} •••• ${cardData.cardNumber.slice(-4) || '4242'}`;
-    } else if (formData.paymentMethod === 'Apple Pay / Google Pay') {
-      paymentDetailLabel = digitalWalletType === 'apple' ? 'Apple Pay (Device Card)' : 'Google Pay (Device Card)';
-    } else if (formData.paymentMethod === 'InstaPay / Wallet') {
-      paymentDetailLabel = `InstaPay (${instapayData.walletNumber})`;
-    } else if (formData.paymentMethod === 'Bank Transfer') {
-      paymentDetailLabel = `Bank Wire (Ref: ${bankData.transferRef})`;
+    if (formData.paymentMethod === 'Visa') {
+      paymentDetailLabel = `Visa •••• ${cardData.cardNumber.slice(-4) || '4242'}`;
     } else {
       paymentDetailLabel = 'Cash Voucher (Front Desk)';
     }
@@ -401,7 +325,7 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
       email: '',
       phone: '',
       requestedStartDate: new Date().toISOString().split('T')[0],
-      paymentMethod: 'Credit Card',
+      paymentMethod: 'Visa',
       notes: '',
     });
     setCardData({
@@ -412,8 +336,6 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
       saveCard: true,
     });
     setIsCardFlipped(false);
-    setInstapayData({ walletNumber: '', referenceCode: '' });
-    setBankData({ transferRef: '', senderBank: '' });
     setErrors({});
     setEmailSentToast(false);
     onClose();
@@ -461,7 +383,7 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
               <div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-bold text-text-main uppercase tracking-wider">
-                    Verified by {cardBrand === 'mastercard' ? 'Mastercard' : 'Visa'}
+                    Verified by Visa
                   </span>
                   <span className="px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-400 text-[9px] font-bold">
                     SECURE 2.0
@@ -895,12 +817,9 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
             <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">
               Select Payment Method
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {[
-                { id: 'Credit Card', label: 'Card', icon: CreditCard, subtitle: 'Visa/MC/Amex' },
-                { id: 'Apple Pay / Google Pay', label: '1-Click Pay', icon: Fingerprint, subtitle: 'Apple/Google' },
-                { id: 'InstaPay / Wallet', label: 'InstaPay', icon: Smartphone, subtitle: 'Instant Transfer' },
-                { id: 'Bank Transfer', label: 'Bank Wire', icon: Building2, subtitle: 'CIB Swift' },
+                { id: 'Visa', label: 'Visa', icon: CreditCard, subtitle: 'Visa cards only' },
                 { id: 'Cash', label: 'Cash', icon: Banknote, subtitle: 'Front Desk' },
               ].map((method) => {
                 const Icon = method.icon;
@@ -942,9 +861,9 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
           {/* ========================================================= */}
           {/* OPTION 1: CREDIT / DEBIT CARD (WITH 3D FLIP) */}
           {/* ========================================================= */}
-          {formData.paymentMethod === 'Credit Card' && (
+          {formData.paymentMethod === 'Visa' && (
             <div className="space-y-4 pt-1">
-              {/* Interactive 3D Realistic Credit Card */}
+              {/* Interactive Visa card */}
               <div
                 className="relative w-full h-48 cursor-pointer select-none"
                 style={{ perspective: '1000px' }}
@@ -988,17 +907,6 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
                         {cardBrand === 'visa' && (
                           <span className="font-extrabold text-base italic tracking-widest text-cyan-300 drop-shadow">
                             VISA
-                          </span>
-                        )}
-                        {cardBrand === 'mastercard' && (
-                          <div className="flex items-center -space-x-2">
-                            <span className="w-6 h-6 rounded-full bg-rose-500/90 drop-shadow" />
-                            <span className="w-6 h-6 rounded-full bg-amber-400/90 drop-shadow" />
-                          </div>
-                        )}
-                        {cardBrand === 'amex' && (
-                          <span className="font-black text-xs px-2 py-0.5 rounded bg-blue-600 text-white font-serif">
-                            AMEX
                           </span>
                         )}
                         {cardBrand === 'generic' && (
@@ -1070,42 +978,11 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
                 </div>
               </div>
 
-              {/* Demo Fill Chips */}
-              <div className="flex items-center justify-between text-xs pt-0.5">
-                <span className="text-text-muted text-[11px] flex items-center gap-1">
-                  <Zap className="w-3.5 h-3.5 text-amber-400" />
-                  Quick Demo Cards:
-                </span>
-                <div className="flex gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => handleFillDemoCard('visa')}
-                    className="px-2 py-0.5 rounded bg-surface-card hover:bg-surface-elevated border border-border-subtle text-[10px] font-bold text-cyan-400 cursor-pointer transition-colors"
-                  >
-                    Visa 4242
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleFillDemoCard('mastercard')}
-                    className="px-2 py-0.5 rounded bg-surface-card hover:bg-surface-elevated border border-border-subtle text-[10px] font-bold text-amber-400 cursor-pointer transition-colors"
-                  >
-                    Mastercard
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleFillDemoCard('amex')}
-                    className="px-2 py-0.5 rounded bg-surface-card hover:bg-surface-elevated border border-border-subtle text-[10px] font-bold text-purple-400 cursor-pointer transition-colors"
-                  >
-                    Amex
-                  </button>
-                </div>
-              </div>
-
               {/* Card Inputs */}
               <div className="space-y-3">
                 <FormInput
                   label="Card Number"
-                  placeholder="4532 8492 1048 9201"
+                  placeholder="Visa card number"
                   value={cardData.cardNumber}
                   onChange={handleCardNumberChange}
                   error={errors.cardNumber}
@@ -1169,186 +1046,6 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
           )}
 
           {/* ========================================================= */}
-          {/* OPTION 2: APPLE PAY / GOOGLE PAY (1-CLICK BIOMETRIC) */}
-          {/* ========================================================= */}
-          {formData.paymentMethod === 'Apple Pay / Google Pay' && (
-            <div className="p-5 rounded-2xl bg-surface-card border border-border-subtle space-y-4">
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setDigitalWalletType('apple')}
-                  className={`flex-1 py-3 px-4 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all ${
-                    digitalWalletType === 'apple'
-                      ? 'bg-black text-white border-zinc-700 shadow-md ring-2 ring-brand-primary/40'
-                      : 'bg-surface-elevated text-text-muted border-border-subtle hover:text-text-main'
-                  }`}
-                >
-                  <span className="text-base leading-none"></span> Pay with Apple Pay
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setDigitalWalletType('google')}
-                  className={`flex-1 py-3 px-4 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all ${
-                    digitalWalletType === 'google'
-                      ? 'bg-white text-zinc-900 border-zinc-300 shadow-md ring-2 ring-brand-primary/40'
-                      : 'bg-surface-elevated text-text-muted border-border-subtle hover:text-text-main'
-                  }`}
-                >
-                  <span className="text-blue-500 font-extrabold text-sm">G</span>
-                  <span>Pay with Google</span>
-                </button>
-              </div>
-
-              <div className="p-4 rounded-xl bg-surface-elevated border border-border-subtle space-y-2 text-xs">
-                <div className="flex items-center justify-between text-text-muted">
-                  <span>Authorized Device:</span>
-                  <span className="font-semibold text-text-main">
-                    {digitalWalletType === 'apple' ? 'iPhone / MacBook (Touch ID/Face ID)' : 'Android / Chrome Passkey'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-text-muted">
-                  <span>Linked Pass Card:</span>
-                  <span className="font-mono font-bold text-brand-primary">
-                    Default Card (•••• 9182)
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-text-muted">
-                  <span>Billing Name:</span>
-                  <span className="font-semibold text-text-main">{formData.fullName || 'Alex Morgan'}</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 text-xs text-text-muted justify-center">
-                <Fingerprint className="w-4 h-4 text-brand-primary" />
-                <span>One-touch instant authorization via on-device biometrics</span>
-              </div>
-            </div>
-          )}
-
-          {/* ========================================================= */}
-          {/* OPTION 3: INSTAPAY / MOBILE WALLET */}
-          {/* ========================================================= */}
-          {formData.paymentMethod === 'InstaPay / Wallet' && (
-            <div className="p-5 rounded-2xl bg-surface-card border border-border-subtle space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center flex-shrink-0 border border-purple-500/30">
-                  <Smartphone className="w-5 h-5" />
-                </div>
-                <div>
-                  <h5 className="text-xs font-bold text-text-main">InstaPay & Instant Mobile Wallet</h5>
-                  <p className="text-[11px] text-text-muted">
-                    Pay instantly via InstaPay IPN, Vodafone Cash, Orange Money, or Meeza.
-                  </p>
-                </div>
-              </div>
-
-              {/* Official Handle Card with Copy */}
-              <div className="p-3.5 rounded-xl bg-surface-elevated border border-border-subtle flex items-center justify-between gap-2">
-                <div>
-                  <span className="text-[10px] uppercase tracking-wider text-text-muted block font-semibold">
-                    Official GEM InstaPay Handle:
-                  </span>
-                  <code className="text-sm font-bold text-brand-primary font-mono">
-                    gem.gym@instapay
-                  </code>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleCopyText('gem.gym@instapay', 'instapay')}
-                  leftIcon={copiedKey === 'instapay' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                >
-                  {copiedKey === 'instapay' ? 'Copied!' : 'Copy'}
-                </Button>
-              </div>
-
-              <FormInput
-                label="Your InstaPay Address or Mobile Wallet Number"
-                placeholder="e.g., yourname@instapay or 01012345678"
-                value={instapayData.walletNumber}
-                onChange={(e) => {
-                  setInstapayData((prev) => ({ ...prev, walletNumber: e.target.value }));
-                  if (errors.walletNumber) setErrors((prev) => ({ ...prev, walletNumber: '' }));
-                }}
-                error={errors.walletNumber}
-                leftIcon={<Smartphone className="w-4 h-4" />}
-              />
-
-              <FormInput
-                label="Transaction Reference Number (Optional)"
-                placeholder="e.g., IPN-9482014"
-                value={instapayData.referenceCode}
-                onChange={(e) => setInstapayData((prev) => ({ ...prev, referenceCode: e.target.value }))}
-                leftIcon={<Receipt className="w-4 h-4" />}
-              />
-            </div>
-          )}
-
-          {/* ========================================================= */}
-          {/* OPTION 4: BANK WIRE TRANSFER (CIB) */}
-          {/* ========================================================= */}
-          {formData.paymentMethod === 'Bank Transfer' && (
-            <div className="p-5 rounded-2xl bg-surface-card border border-border-subtle space-y-4">
-              <div className="p-3.5 rounded-xl bg-surface-elevated border border-border-subtle space-y-2 text-xs text-text-muted">
-                <div className="font-bold text-text-main text-xs pb-1.5 border-b border-border-subtle flex justify-between items-center">
-                  <span>Beneficiary: GEM Fitness Center LLC</span>
-                  <span className="text-[10px] font-bold text-brand-primary px-2 py-0.5 rounded bg-brand-primary/10">
-                    Official CIB Wire
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Bank Name:</span>
-                  <span className="font-medium text-text-main">Commercial International Bank (CIB)</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Account Number:</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono font-bold text-text-main">1000 4829 0184 92</span>
-                    <button
-                      type="button"
-                      onClick={() => handleCopyText('10004829018492', 'acct')}
-                      className="text-text-muted hover:text-brand-primary cursor-pointer"
-                    >
-                      {copiedKey === 'acct' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>IBAN:</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono font-bold text-brand-primary">EG820010004829018492000</span>
-                    <button
-                      type="button"
-                      onClick={() => handleCopyText('EG820010004829018492000', 'iban')}
-                      className="text-text-muted hover:text-brand-primary cursor-pointer"
-                    >
-                      {copiedKey === 'iban' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Swift / BIC:</span>
-                  <span className="font-mono font-semibold text-text-main">CIBEEGCX</span>
-                </div>
-              </div>
-
-              <FormInput
-                label="Wire Transfer Reference ID / Slip Number"
-                placeholder="e.g., WIRE-84920149"
-                value={bankData.transferRef}
-                onChange={(e) => {
-                  setBankData((prev) => ({ ...prev, transferRef: e.target.value }));
-                  if (errors.transferRef) setErrors((prev) => ({ ...prev, transferRef: '' }));
-                }}
-                error={errors.transferRef}
-                leftIcon={<Building2 className="w-4 h-4" />}
-              />
-            </div>
-          )}
-
-          {/* ========================================================= */}
           {/* OPTION 5: CASH ON ARRIVAL */}
           {/* ========================================================= */}
           {formData.paymentMethod === 'Cash' && (
@@ -1402,9 +1099,7 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
             >
               {formData.paymentMethod === 'Cash'
                 ? `Confirm Reservation ($${selectedPlan?.price} Cash)`
-                : formData.paymentMethod === 'Apple Pay / Google Pay'
-                ? `Authorize with ${digitalWalletType === 'apple' ? 'Apple Pay' : 'Google Pay'} ($${selectedPlan?.price})`
-                : `Authorize & Pay $${selectedPlan?.price} USD`}
+                : `Authorize Visa payment ($${selectedPlan?.price})`}
             </Button>
           </div>
         </form>

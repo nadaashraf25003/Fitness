@@ -68,7 +68,7 @@ def get_pending_requests(
                 request_type=req.request_type or "new",
                 duration=req.duration or 1,
                 paid_amount=req.paid_amount if req.paid_amount is not None else (req.price or 0.0),
-                payment_method=req.payment_method or "Credit Card",
+                payment_method=req.payment_method or "Visa",
                 email=req.email,
                 phone=req.phone,
                 plan_id=req.plan_id,
@@ -140,7 +140,7 @@ def get_request_details(
             "duration": duration,
             "price": req.price if req.price is not None else 0.0,
             "paid_amount": req.paid_amount if req.paid_amount is not None else 0.0,
-            "payment_method": req.payment_method or "Credit Card",
+            "payment_method": req.payment_method or "Visa",
             "plan_id": req.plan_id,
             "plan_name": req.plan_name,
             "notes": req.notes,
@@ -197,7 +197,7 @@ def approve_request(
                     subscription_id=new_sub_id,
                     amount=req.paid_amount if req.paid_amount is not None else (req.price or 0.0),
                     date=today_str,
-                    method=req.payment_method or "Credit Card",
+                    method=req.payment_method or "Visa",
                     status="paid",
                 )
                 db.add(new_pay)
@@ -232,7 +232,7 @@ def approve_request(
                     subscription_id=new_sub_id,
                     amount=req.paid_amount if req.paid_amount is not None else (req.price or 0.0),
                     date=today_str,
-                    method=req.payment_method or "Credit Card",
+                    method=req.payment_method or "Visa",
                     status="paid",
                 )
                 db.add(new_pay)
@@ -260,7 +260,7 @@ def approve_request(
                     subscription_id=new_sub_id,
                     amount=req.paid_amount if req.paid_amount is not None else (req.price or 0.0),
                     date=today_str,
-                    method=req.payment_method or "Credit Card",
+                    method=req.payment_method or "Visa",
                     status="paid",
                 )
                 db.add(new_pay)
@@ -282,7 +282,7 @@ def approve_request(
                     subscription_id=new_sub_id,
                     amount=req.paid_amount if req.paid_amount is not None else (req.price or 0.0),
                     date=today_str,
-                    method=req.payment_method or "Credit Card",
+                    method=req.payment_method or "Visa",
                     status="paid",
                 )
                 db.add(new_pay)

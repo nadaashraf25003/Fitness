@@ -68,7 +68,7 @@ export const CheckStatusModal: React.FC<CheckStatusModalProps> = ({
         memberCode: matchedMember.memberCode,
         duration: 3,
         paidAmount: 79.99,
-        paymentMethod: 'Credit Card',
+        paymentMethod: 'Visa',
       });
       setSearched(true);
       return;

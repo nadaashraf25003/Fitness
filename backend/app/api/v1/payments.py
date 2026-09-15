@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Literal, Optional
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, ConfigDict
@@ -18,7 +18,7 @@ class PaymentCreate(BaseModel):
     subscription_id: str
     amount: float
     date: str
-    method: str = "cash"
+    method: Literal["cash", "visa"] = "cash"
     status: str = "paid"
     branch_id: Optional[int] = 1
 

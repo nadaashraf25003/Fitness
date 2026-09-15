@@ -62,7 +62,7 @@ const initialRequests: SubscriptionRequest[] = [
     requestType: 'new',
     duration: 3,
     paidAmount: 79.99,
-    paymentMethod: 'Credit Card',
+    paymentMethod: 'Visa',
     branchId: 1,
     memberCode: '50',
   },
@@ -265,7 +265,7 @@ export const subscriptionService = {
             notes:
               item.notes !== undefined && item.notes !== null && item.notes !== ''
                 ? item.notes
-                : `Type: ${item.request_type || item.requestType || 'new'} • Paid: $${item.paid_amount ?? item.paidAmount ?? 0} via ${item.payment_method || item.paymentMethod || 'Credit Card'}`,
+                : `Type: ${item.request_type || item.requestType || 'new'} • Paid: $${item.paid_amount ?? item.paidAmount ?? 0} via ${item.payment_method || item.paymentMethod || 'Visa'}`,
             createdAt: item.created_at || item.createdAt || new Date().toISOString(),
             requestType: item.request_type || item.requestType || 'new',
             paidAmount:
@@ -274,7 +274,7 @@ export const subscriptionService = {
                 : item.paidAmount !== undefined && item.paidAmount !== null
                 ? item.paidAmount
                 : matchedPlan?.price ?? 0,
-            paymentMethod: item.payment_method || item.paymentMethod || 'Credit Card',
+            paymentMethod: item.payment_method || item.paymentMethod || 'Visa',
             duration: item.duration ?? matchedPlan?.durationMonths ?? 1,
             memberCode: item.member_code || item.memberCode,
           };
@@ -338,7 +338,7 @@ export const subscriptionService = {
           duration: request.duration || 1,
           price: request.paidAmount !== undefined ? request.paidAmount : 79.99,
           paid_amount: request.paidAmount !== undefined ? request.paidAmount : 79.99,
-          payment_method: request.paymentMethod || 'Credit Card',
+          payment_method: request.paymentMethod || 'Visa',
           plan_id: request.planId,
           plan_name: request.planName,
           notes: request.notes,

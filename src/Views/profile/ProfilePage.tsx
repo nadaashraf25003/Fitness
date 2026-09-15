@@ -43,7 +43,7 @@ export const ProfilePage: React.FC = () => {
     requestType: 'new',
     duration: 3,
     paidAmount: 79.99,
-    paymentMethod: 'Credit Card',
+    paymentMethod: 'Visa',
     branchId: dbMember.branchId || 1,
     memberCode: dbMember.memberCode,
   });
@@ -362,7 +362,7 @@ export const ProfilePage: React.FC = () => {
                 <div>
                   <span className="text-text-muted block text-[10px] uppercase font-semibold">Payment Method</span>
                   <span className="font-semibold text-text-main text-xs mt-0.5 block truncate">
-                    {member.paymentMethod || 'Credit Card'}
+                    {member.paymentMethod || 'Visa'}
                   </span>
                 </div>
 

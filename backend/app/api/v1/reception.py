@@ -399,7 +399,7 @@ def create_subscription_request(
         payment_method = (
             payload.subscription.get("payment_method")
             or payload.subscription.get("paymentMethod")
-            or "Credit Card"
+            or "Visa"
         )
         sub_notes = payload.subscription.get("notes") or ""
         combined_notes = (
@@ -509,7 +509,7 @@ def create_subscription_request(
         duration = int(payload.subscription.get("duration", 1))
         price = float(payload.subscription.get("price", 500))
         paid_amount = float(payload.subscription.get("paid_amount", price))
-        payment_method = payload.subscription.get("payment_method", "Credit Card")
+        payment_method = payload.subscription.get("payment_method", "Visa")
         plan_name = payload.subscription.get("plan_name") or f"Renewal {duration} Month(s)"
         plan_id = payload.subscription.get("plan_id") or "plan-renew"
 
@@ -586,7 +586,7 @@ def create_subscription_request(
         duration = int(payload.subscription.get("duration", 1))
         price = float(payload.subscription.get("price", 500))
         paid_amount = float(payload.subscription.get("paid_amount", price))
-        payment_method = payload.subscription.get("payment_method", "Credit Card")
+        payment_method = payload.subscription.get("payment_method", "Visa")
         plan_name = payload.subscription.get("plan_name") or f"Extension {duration} Month(s)"
         plan_id = payload.subscription.get("plan_id") or "plan-extend"
 

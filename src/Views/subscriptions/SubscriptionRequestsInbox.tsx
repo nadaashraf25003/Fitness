@@ -257,7 +257,7 @@ export const SubscriptionRequestsInbox: React.FC = () => {
               <div className="p-3 rounded-xl bg-surface-card border border-border-subtle">
                 <span className="text-text-muted block">Payment Method</span>
                 <span className="text-sm font-semibold text-text-main mt-0.5 block">
-                  {inspectingRequest.paymentMethod || 'Credit Card'}
+                  {inspectingRequest.paymentMethod || 'Visa'}
                 </span>
               </div>
             </div>
