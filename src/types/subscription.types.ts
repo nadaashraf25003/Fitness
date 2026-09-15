@@ -15,31 +15,12 @@ export interface SubscriptionRequest {
   fullName: string;
   email: string;
   phone: string;
-  planId?: string;
-  planName?: string;
-  requestedStartDate?: string;
+  planId: string;
+  planName: string;
+  requestedStartDate: string;
   status: RequestStatus;
   notes?: string;
   createdAt: string;
-  requestType?: 'new' | 'renew' | 'extend' | 'cancel' | string;
-  paidAmount?: number;
-  paymentMethod?: string;
-  duration?: number;
-  branchId?: number;
-  memberCode?: string | number;
-  memberId?: string | number;
-  /** Local checkout simulation only; no bank transaction is made. */
-  simulatePayment?: boolean;
-}
-
-export interface AdminPendingRequest {
-  requestId: string | number;
-  memberName: string;
-  memberCode: string | number;
-  requestType: string;
-  duration: number;
-  paidAmount: number;
-  paymentMethod: string;
 }
 
 export interface PaymentRecord {
@@ -49,6 +30,6 @@ export interface PaymentRecord {
   subscriptionId: string;
   amount: number;
   date: string;
-  method: 'cash' | 'visa';
+  method: 'cash' | 'card' | 'transfer' | 'online';
   status: 'paid' | 'partial' | 'unpaid';
 }
