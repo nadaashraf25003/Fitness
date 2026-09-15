@@ -42,6 +42,13 @@ export const AddMemberForm: React.FC<AddMemberFormProps> = ({ onSuccess, onCance
   });
 
   useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      branchId: initialBranchId,
+    }));
+  }, [initialBranchId]);
+
+  useEffect(() => {
     async function loadPlans() {
       setLoadingPlans(true);
       try {

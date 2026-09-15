@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useBranch } from '../../Hooks/useBranch';
 import { useSubscriptionRequests } from '../../Hooks/useSubscriptionRequests';
 import { Table, Column } from '../../Components/ui/Table';
 import { Badge } from '../../Components/ui/Badge';
@@ -23,7 +24,7 @@ import { SubscriptionRequest } from '../../types/subscription.types';
 import { formatDate } from '../../utils/dateUtils';
 
 export const SubscriptionRequestsInbox: React.FC = () => {
-  const [selectedBranch, setSelectedBranch] = useState<number>(1);
+  const { selectedBranch, setSelectedBranch, branchName, branchLocation, branches } = useBranch();
   const {
     requests,
     loading,
@@ -153,21 +154,24 @@ export const SubscriptionRequestsInbox: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Branch Switcher */}
-          <div className="relative">
-            <select
-              value={selectedBranch}
-              onChange={(e) => setSelectedBranch(Number(e.target.value))}
-              aria-label="Gym Branch Location"
-              className="appearance-none bg-surface-card border border-border-subtle hover:border-brand-primary/50 text-text-main text-xs font-semibold py-2 pl-3 pr-8 rounded-xl focus:outline-none focus:ring-1 focus:ring-brand-primary transition-colors cursor-pointer"
-            >
-              <option value={1}>Branch 1: Main (Khanqah)</option>
-              <option value={2}>Branch 2: Downtown (City Center)</option>
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-text-muted">
-              <Building2 className="w-3.5 h-3.5 text-brand-primary" />
-            </div>
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Branch Switcher Pills */}
+          <div className="flex items-center gap-1 bg-surface-card border border-border-subtle p-1 rounded-xl shadow-inner">
+            {branches.map((b) => (
+              <button
+                key={b.id}
+                type="button"
+                onClick={() => setSelectedBranch(b.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  selectedBranch === b.id
+                    ? 'bg-brand-primary text-black shadow-sm'
+                    : 'text-text-muted hover:text-text-main'
+                }`}
+              >
+                <Building2 className="w-3.5 h-3.5" />
+                <span>Branch {b.id}: {b.location}</span>
+              </button>
+            ))}
           </div>
 
           <Button

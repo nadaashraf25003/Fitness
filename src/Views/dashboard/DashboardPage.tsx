@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../Hooks/useAuth';
+import { useBranch } from '../../Hooks/useBranch';
 import { StatCard } from '../../Components/ui/StatCard';
 import { BarChart } from '../../Components/charts/BarChart';
 import { DonutChart } from '../../Components/charts/DonutChart';
@@ -25,9 +26,9 @@ import { AttendanceStats, CheckInEntry } from '../../types/attendance.types';
 
 export const DashboardPage: React.FC = () => {
   const { user, isAdmin } = useAuth();
+  const { selectedBranch, setSelectedBranch, branchName, branchLocation, branches } = useBranch();
 
   // ── State ─────────────────────────────────────────────────────────────────
-  const [selectedBranch, setSelectedBranch] = useState<number>(1);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [attendanceStats, setAttendanceStats] = useState<AttendanceStats | null>(null);
   const [recentCheckIns, setRecentCheckIns] = useState<CheckInEntry[]>([]);
@@ -120,22 +121,23 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-3 relative z-10">
-          {/* Branch Switcher */}
-          <div className="flex items-center bg-surface-card border border-border-subtle rounded-xl p-1 shadow-inner">
-            <Building2 className="w-4 h-4 text-brand-primary ml-2.5 mr-1.5" />
-            <select
-              value={selectedBranch}
-              onChange={(e) => setSelectedBranch(Number(e.target.value))}
-              aria-label="Gym Branch Location"
-              className="bg-transparent text-xs sm:text-sm font-semibold text-text-main focus:outline-none pr-3 py-1.5 cursor-pointer"
-            >
-              <option value={1} className="bg-surface text-text-main">
-                Branch 1: Main Branch (Khanqah)
-              </option>
-              <option value={2} className="bg-surface text-text-main">
-                Branch 2: Downtown Branch (City Center)
-              </option>
-            </select>
+          {/* Branch Switcher Pills */}
+          <div className="flex items-center gap-1 bg-surface-card border border-border-subtle p-1 rounded-xl shadow-inner">
+            {branches.map((b) => (
+              <button
+                key={b.id}
+                type="button"
+                onClick={() => setSelectedBranch(b.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  selectedBranch === b.id
+                    ? 'bg-brand-primary text-black shadow-sm'
+                    : 'text-text-muted hover:text-text-main'
+                }`}
+              >
+                <Building2 className="w-3.5 h-3.5" />
+                <span>Branch {b.id}: {b.location}</span>
+              </button>
+            ))}
           </div>
 
           {/* Refresh Button */}
@@ -322,7 +324,7 @@ export const DashboardPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <BarChart
-            title={`Monthly Revenue Trend ($ USD) — Branch ${selectedBranch}`}
+            title={`Monthly Revenue Trend ($ USD) — Branch ${selectedBranch} (${branchLocation})`}
             data={revenueData}
             barColor="bg-brand-primary"
             height={220}
@@ -425,7 +427,7 @@ export const DashboardPage: React.FC = () => {
                   Top Members Attendance Leaderboard
                 </h3>
               </div>
-              <span className="text-[11px] text-text-subtle">Branch {selectedBranch}</span>
+              <span className="text-[11px] text-text-subtle">Branch {selectedBranch}: {branchLocation}</span>
             </div>
 
             {topMembers.length === 0 ? (

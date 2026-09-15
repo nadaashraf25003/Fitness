@@ -4,6 +4,7 @@ import { Plan, SubscriptionRequest } from "../../types/subscription.types";
 import { FormInput } from "../ui/FormInput";
 import { Button } from "../ui/Button";
 import { subscriptionService } from "../../services/subscriptionService";
+import { getStoredBranch } from "../../Hooks/useBranch";
 import {
   CheckCircle2,
   User,
@@ -61,7 +62,7 @@ export const SubscriptionRequestModal: React.FC<
     fullName: "",
     email: "",
     phone: "",
-    branchId: 1,
+    branchId: getStoredBranch(),
     requestedStartDate: new Date().toISOString().split("T")[0],
     paymentMethod: "Visa" as PaymentMethodType,
     notes: "",
@@ -82,6 +83,15 @@ export const SubscriptionRequestModal: React.FC<
       }
     });
   }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      setFormData((prev) => ({
+        ...prev,
+        branchId: getStoredBranch(),
+      }));
+    }
+  }, [isOpen]);
 
   // Email existence verification states
   const [isCheckingEmail, setIsCheckingEmail] = useState<boolean>(false);

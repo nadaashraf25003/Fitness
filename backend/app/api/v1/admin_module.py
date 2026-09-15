@@ -208,6 +208,8 @@ def approve_request(
                     existing_member.email = req.email
                 if req.phone:
                     existing_member.phone = req.phone
+                if req.branch_id:
+                    existing_member.branch_id = req.branch_id
                 existing_member.status = "active"
                 existing_member.join_date = req.requested_start_date or today_str
                 new_sub_id = f"sub-{random.randint(1000, 9999)}"
@@ -275,6 +277,8 @@ def approve_request(
             if member:
                 if req.full_name:
                     member.full_name = req.full_name
+                if req.branch_id:
+                    member.branch_id = req.branch_id
                 member.status = "active"
                 member.join_date = req.requested_start_date or today_str
                 new_sub_id = f"sub-{random.randint(1000, 9999)}"
@@ -305,6 +309,8 @@ def approve_request(
             if member:
                 if req.full_name:
                     member.full_name = req.full_name
+                if req.branch_id:
+                    member.branch_id = req.branch_id
                 new_sub_id = f"sub-{random.randint(1000, 9999)}"
                 new_pay = Payment(
                     branch_id=req.branch_id,
