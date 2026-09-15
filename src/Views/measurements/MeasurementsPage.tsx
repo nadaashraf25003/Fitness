@@ -10,13 +10,7 @@ import {
   User,
   Trash2,
   Calendar,
-  Sparkles,
-  TrendingDown,
-  TrendingUp,
-  Ruler,
-  FileText,
   Info,
-  CheckCircle2,
 } from 'lucide-react';
 import { StatCard } from '../../Components/ui/StatCard';
 import { useMeasurements } from '../../Hooks/useMeasurements';

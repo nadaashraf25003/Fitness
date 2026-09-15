@@ -10,6 +10,7 @@ export const PATHS = {
   TRAINERS: '/trainers',
   MEASUREMENTS: '/measurements',
   PAYMENTS: '/payments',
+  PROFILE: '/profile',
   UNAUTHORIZED: '/unauthorized',
 } as const;
 

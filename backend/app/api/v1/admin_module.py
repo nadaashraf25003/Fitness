@@ -188,6 +188,7 @@ def approve_request(
                 existing_member.plan_name = req.plan_name
                 if req.notes:
                     existing_member.note = req.notes
+                req.member_id = existing_member.id
 
                 new_pay = Payment(
                     branch_id=req.branch_id,
@@ -221,6 +222,7 @@ def approve_request(
                 )
                 db.add(new_member)
                 db.flush()
+                req.member_id = new_member.id
 
                 # Record payment
                 new_pay = Payment(

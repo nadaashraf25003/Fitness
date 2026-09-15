@@ -9,21 +9,41 @@ import { SubscriptionRequestModal } from '../../Components/public/SubscriptionRe
 import { CheckStatusModal } from '../../Components/public/CheckStatusModal';
 import { Logo } from '../../Components/ui/Logo';
 import { ThemeToggle } from '../../Components/ui/ThemeToggle';
-import { Plan } from '../../types/subscription.types';
+import { Plan, SubscriptionRequest } from '../../types/subscription.types';
 import { subscriptionService } from '../../services/subscriptionService';
 import { Link } from 'react-router-dom';
 import { PATHS } from '../../Routing/routePaths';
 import { Search } from 'lucide-react';
+
+const VERIFIED_STORAGE_KEY = 'gym_verified_public_member';
 
 export const LandingPage: React.FC = () => {
   const [plans] = useState<Plan[]>(subscriptionService.getPlans());
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [verifiedMember, setVerifiedMember] = useState<SubscriptionRequest | null>(() => {
+    try {
+      const stored = localStorage.getItem(VERIFIED_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
 
   const handleSelectPlan = (plan: Plan) => {
     setSelectedPlan(plan);
     setIsModalOpen(true);
+  };
+
+  const handleMemberVerified = (member: SubscriptionRequest) => {
+    setVerifiedMember(member);
+    try {
+      localStorage.setItem(VERIFIED_STORAGE_KEY, JSON.stringify(member));
+    } catch (e) {
+      console.warn('Failed to cache verified member:', e);
+    }
+    setIsStatusModalOpen(false);
   };
 
   const scrollToSection = (sectionId: string) => {
@@ -69,14 +89,33 @@ export const LandingPage: React.FC = () => {
           </nav>
 
           <div className="flex items-center gap-2.5 sm:gap-3">
-            {/* Track Application Button */}
-            <button
-              onClick={() => setIsStatusModalOpen(true)}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-card border border-border-subtle hover:border-brand-primary text-xs font-medium text-text-muted hover:text-brand-primary transition-colors cursor-pointer"
-            >
-              <Search className="w-3.5 h-3.5" />
-              <span>Check Status</span>
-            </button>
+            {/* Dynamic Profile Button (Directs directly to /profile page) */}
+            {verifiedMember ? (
+              <Link
+                to={PATHS.PROFILE}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-brand-primary/10 border border-brand-primary/40 hover:bg-brand-primary/20 text-xs font-bold text-text-main transition-all cursor-pointer shadow-sm group animate-in fade-in"
+                title="Go to /profile & View Keycard"
+              >
+                <div className="w-5 h-5 rounded-full bg-brand-primary text-black flex items-center justify-center text-[10px] font-extrabold flex-shrink-0">
+                  {verifiedMember.fullName.charAt(0).toUpperCase()}
+                </div>
+                <span className="group-hover:text-brand-primary transition-colors truncate max-w-[110px] sm:max-w-[140px]">
+                  {verifiedMember.fullName}
+                </span>
+                <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-extrabold uppercase whitespace-nowrap">
+                  {verifiedMember.status === 'approved' ? 'Active Pass' : 'In Review'}
+                </span>
+              </Link>
+            ) : (
+              /* Standard Check Status Button */
+              <button
+                onClick={() => setIsStatusModalOpen(true)}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-card border border-border-subtle hover:border-brand-primary text-xs font-medium text-text-muted hover:text-brand-primary transition-colors cursor-pointer"
+              >
+                <Search className="w-3.5 h-3.5" />
+                <span>Check Status</span>
+              </button>
+            )}
 
             <ThemeToggle size="sm" />
 
@@ -110,6 +149,7 @@ export const LandingPage: React.FC = () => {
       <CheckStatusModal
         isOpen={isStatusModalOpen}
         onClose={() => setIsStatusModalOpen(false)}
+        onSelectMember={handleMemberVerified}
       />
 
       {/* Rich Footer with Copyright */}

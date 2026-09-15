@@ -1,34 +1,32 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { ProtectedRoute } from './ProtectedRoute';
 import { PageWrapper } from '../Components/layout/PageWrapper';
- import { LandingPage } from '../Views/public/LandingPage';
+import { LandingPage } from '../Views/public/LandingPage';
 import { LoginPage } from '../Views/auth/LoginPage';
-// import { RegisterPage } from '../Views/auth/RegisterPage';
-//mport { DashboardPage } from '../Views/dashboard/DashboardPage';
 import { SubscriptionsPage } from '../Views/subscriptions/SubscriptionsPage';
 import { SubscriptionRequestsInbox } from '../Views/subscriptions/SubscriptionRequestsInbox';
 import { AttendancePage } from '../Views/attendance/AttendancePage';
 import { TrainersPage } from '../Views/trainers/TrainersPage';
 import { MeasurementsPage } from '../Views/measurements/MeasurementsPage';
 import { PaymentsPage } from '../Views/payments/PaymentsPage';
- import { NotFoundPage } from '../Views/errors/NotFoundPage';
- import { UnauthorizedPage } from '../Views/errors/UnauthorizedPage';
+import { ProfilePage } from '../Views/profile/ProfilePage';
+import { NotFoundPage } from '../Views/errors/NotFoundPage';
+import { UnauthorizedPage } from '../Views/errors/UnauthorizedPage';
 import { PATHS } from './routePaths';
 
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
-      {/* 1. Public Visitor Routes */}
-      { <Route path={PATHS.PUBLIC_HOME} element={<LandingPage />} /> }
+      {/* 1. Public & Member Routes */}
+      <Route path={PATHS.PUBLIC_HOME} element={<LandingPage />} />
+      <Route path={PATHS.PROFILE} element={<ProfilePage />} />
       <Route path={PATHS.LOGIN} element={<LoginPage />} />
-      {/* <Route path={PATHS.REGISTER} element={<RegisterPage />} /> */}
-      { <Route path={PATHS.UNAUTHORIZED} element={<UnauthorizedPage />} /> }
+      <Route path={PATHS.UNAUTHORIZED} element={<UnauthorizedPage />} />
 
       {/* 2. Authenticated Staff & Admin Routes */}
       <Route element={<ProtectedRoute />}>
         <Route element={<PageWrapper />}>
-          {/* <Route path={PATHS.DASHBOARD} element={<DashboardPage />} /> */}
           <Route path={PATHS.ATTENDANCE} element={<AttendancePage />} />
           <Route path={PATHS.TRAINERS} element={<TrainersPage />} />
           <Route path={PATHS.MEASUREMENTS} element={<MeasurementsPage />} />
@@ -45,7 +43,7 @@ export const AppRoutes: React.FC = () => {
       </Route>
 
       {/* 4. Fallback 404 Route */}
-      { <Route path="*" element={<NotFoundPage />} /> }
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 };

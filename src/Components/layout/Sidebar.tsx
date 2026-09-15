@@ -6,7 +6,6 @@ import { Logo } from '../ui/Logo';
 import {
   LayoutDashboard,
   Users,
-  CreditCard,
   ClipboardCheck,
   UserCheck,
   Activity,
