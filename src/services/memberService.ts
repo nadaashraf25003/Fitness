@@ -1,225 +1,114 @@
 import { Member } from '../types/member.types';
 import { apiClient } from './apiClient';
-import { getStoredItem, setStoredItem } from '../utils/storageUtils';
-
-const STORAGE_KEY = 'gym_members';
-
-const initialMembers: Member[] = [
-  {
-    id: 'mem-15',
-    memberCode: '15',
-    barcode: '123456789',
-    branchId: 1,
-    fullName: 'Ahmed',
-    email: 'ahmed@example.com',
-    phone: '01012345678',
-    photoUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-    gender: 'male',
-    dateOfBirth: '1995-03-10',
-    joinDate: new Date().toISOString().split('T')[0],
-    subscriptionId: 'sub-32',
-    planName: 'Monthly Standard',
-    status: 'active',
-  },
-  {
-    id: 'mem-101',
-    memberCode: '101',
-    barcode: '101010101',
-    branchId: 1,
-    fullName: 'James Wilson',
-    email: 'james.w@example.com',
-    phone: '01000000001',
-    photoUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
-    gender: 'male',
-    dateOfBirth: '1992-05-14',
-    joinDate: new Date().toISOString().split('T')[0],
-    subscriptionId: 'sub-pro',
-    planName: 'Pro 3-Month',
-    status: 'active',
-  },
-  {
-    id: 'mem-102',
-    memberCode: '102',
-    barcode: '102020202',
-    branchId: 1,
-    fullName: 'Sophia Chen',
-    email: 'sophia.c@example.com',
-    phone: '01000000002',
-    photoUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
-    gender: 'female',
-    dateOfBirth: '1996-08-22',
-    joinDate: new Date().toISOString().split('T')[0],
-    subscriptionId: 'sub-vip',
-    planName: 'VIP Annual',
-    status: 'active',
-  },
-  {
-    id: 'mem-103',
-    memberCode: '103',
-    barcode: '103030303',
-    branchId: 1,
-    fullName: 'Ahmed Ali',
-    email: 'ahmed.ali@example.com',
-    phone: '01000000003',
-    photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-    gender: 'male',
-    dateOfBirth: '1990-11-05',
-    joinDate: '2026-07-15',
-    subscriptionId: 'sub-basic',
-    planName: 'Basic Monthly',
-    status: 'expired',
-  },
-];
 
 export const memberService = {
   /**
-   * Synchronous get for immediate offline/component initial state
+   * Synchronous helper for initial render state (empty array before backend fetch)
    */
-  getAll(params?: { search?: string; status?: string; branch_id?: number; branchId?: number }): Member[] {
-    const cached = getStoredItem<Member[]>(STORAGE_KEY, initialMembers);
-    this.fetchMembers(params).catch(() => {});
-
-    let list = cached;
-    const targetBranch = params?.branch_id || params?.branchId;
-    if (targetBranch) {
-      list = list.filter((m) => (m.branchId || 1) === targetBranch);
-    }
-    if (params?.status) {
-      list = list.filter((m) => m.status === params.status);
-    }
-    if (params?.search) {
-      const q = params.search.toLowerCase();
-      list = list.filter(
-        (m) =>
-          m.fullName.toLowerCase().includes(q) ||
-          m.email.toLowerCase().includes(q) ||
-          m.phone.toLowerCase().includes(q)
-      );
-    }
-    return list;
+  getAll(_params?: { search?: string; status?: string; branch_id?: number; branchId?: number }): Member[] {
+    return [];
   },
 
   /**
-   * Fetch all members from backend API
+   * Fetch all members from backend API directly
    */
   async fetchMembers(params?: { search?: string; status?: string; branch_id?: number; branchId?: number }): Promise<Member[]> {
     try {
-      const apiParams: any = { ...params };
-      if (params?.branchId && !params.branch_id) {
-        apiParams.branch_id = params.branchId;
-      }
+      const apiParams: any = {};
+      if (params?.search?.trim()) apiParams.search = params.search.trim();
+      if (params?.status && params.status !== 'all') apiParams.status = params.status;
+      const targetBranch = params?.branch_id || params?.branchId;
+      if (targetBranch) apiParams.branch_id = targetBranch;
+
       const response = await apiClient.get<Member[]>('/fitness/members', { params: apiParams });
-      if (Array.isArray(response.data) && response.data.length > 0) {
-        setStoredItem(STORAGE_KEY, response.data);
+      if (Array.isArray(response.data)) {
         return response.data;
       }
-    } catch (error) {
-      console.warn('Backend API /fitness/members unavailable, using cached members:', error);
+    } catch (error: any) {
+      console.error('Backend API /fitness/members error:', error);
+      throw error;
     }
-
-    let list = getStoredItem<Member[]>(STORAGE_KEY, initialMembers);
-    const targetBranch = params?.branch_id || params?.branchId;
-    if (targetBranch) {
-      list = list.filter((m) => (m.branchId || 1) === targetBranch);
-    }
-    if (params?.status) {
-      list = list.filter((m) => m.status === params.status);
-    }
-    if (params?.search) {
-      const q = params.search.toLowerCase();
-      list = list.filter(
-        (m) =>
-          m.fullName.toLowerCase().includes(q) ||
-          m.email.toLowerCase().includes(q) ||
-          m.phone.toLowerCase().includes(q)
-      );
-    }
-    return list;
+    return [];
   },
 
   /**
-   * Get single member by ID
+   * Get single member by ID directly from backend API
    */
   async getById(id: string): Promise<Member | null> {
     try {
       const response = await apiClient.get<Member>(`/fitness/members/${id}`);
       return response.data;
-    } catch (error) {
-      console.warn(`Backend API /fitness/members/${id} unavailable, checking local storage:`, error);
-      const list = getStoredItem<Member[]>(STORAGE_KEY, initialMembers);
-      return list.find((m) => m.id === id) || null;
+    } catch (error: any) {
+      console.error(`Backend API /fitness/members/${id} error:`, error);
+      return null;
     }
   },
 
   /**
-   * Create a new member
+   * Create a new member directly in backend API
    */
   async create(member: Omit<Member, 'id'>): Promise<Member> {
     try {
-      const response = await apiClient.post<Member>('/fitness/members', member);
-      if (response.data && response.data.id) {
-        const list = getStoredItem<Member[]>(STORAGE_KEY, initialMembers);
-        list.unshift(response.data);
-        setStoredItem(STORAGE_KEY, list);
-        return response.data;
-      }
-    } catch (error) {
-      console.warn('Backend API POST /fitness/members failed, persisting locally:', error);
+      const payload: any = {
+        full_name: member.fullName,
+        email: member.email,
+        phone: member.phone,
+        gender: member.gender,
+        date_of_birth: member.dateOfBirth,
+        join_date: member.joinDate,
+        subscription_id: member.subscriptionId,
+        plan_name: member.planName,
+        status: member.status,
+        branch_id: member.branchId || 1,
+        photo_url: member.photoUrl || null,
+        trainer_id: member.trainerId || null,
+      };
+      const response = await apiClient.post<Member>('/fitness/members', payload);
+      return response.data;
+    } catch (error: any) {
+      console.error('Backend API POST /fitness/members failed:', error);
+      throw error;
     }
-
-    const list = getStoredItem<Member[]>(STORAGE_KEY, initialMembers);
-    const newMember: Member = {
-      ...member,
-      id: `mem-${Date.now()}`,
-      memberCode: String(Math.floor(100 + Math.random() * 900)),
-      barcode: String(Math.floor(100000000 + Math.random() * 900000000)),
-    };
-    list.unshift(newMember);
-    setStoredItem(STORAGE_KEY, list);
-    return newMember;
   },
 
   /**
-   * Update an existing member
+   * Update an existing member directly in backend API
    */
   async update(id: string, updates: Partial<Member>): Promise<Member | null> {
     try {
-      const response = await apiClient.put<Member>(`/fitness/members/${id}`, updates);
-      if (response.data) {
-        const list = getStoredItem<Member[]>(STORAGE_KEY, initialMembers);
-        const idx = list.findIndex((m) => m.id === id);
-        if (idx !== -1) {
-          list[idx] = response.data;
-          setStoredItem(STORAGE_KEY, list);
-        }
-        return response.data;
-      }
-    } catch (error) {
-      console.warn(`Backend API PUT /fitness/members/${id} failed, updating locally:`, error);
-    }
+      const payload: any = {};
+      if (updates.fullName !== undefined) payload.full_name = updates.fullName;
+      if (updates.email !== undefined) payload.email = updates.email;
+      if (updates.phone !== undefined) payload.phone = updates.phone;
+      if (updates.gender !== undefined) payload.gender = updates.gender;
+      if (updates.dateOfBirth !== undefined) payload.date_of_birth = updates.dateOfBirth;
+      if (updates.joinDate !== undefined) payload.join_date = updates.joinDate;
+      if (updates.subscriptionId !== undefined) payload.subscription_id = updates.subscriptionId;
+      if (updates.planName !== undefined) payload.plan_name = updates.planName;
+      if (updates.status !== undefined) payload.status = updates.status;
+      if (updates.branchId !== undefined) payload.branch_id = updates.branchId;
+      if (updates.photoUrl !== undefined) payload.photo_url = updates.photoUrl;
+      if (updates.trainerId !== undefined) payload.trainer_id = updates.trainerId;
 
-    const list = getStoredItem<Member[]>(STORAGE_KEY, initialMembers);
-    const idx = list.findIndex((m) => m.id === id);
-    if (idx === -1) return null;
-    list[idx] = { ...list[idx], ...updates };
-    setStoredItem(STORAGE_KEY, list);
-    return list[idx];
+      const response = await apiClient.put<Member>(`/fitness/members/${id}`, payload);
+      return response.data;
+    } catch (error: any) {
+      console.error(`Backend API PUT /fitness/members/${id} failed:`, error);
+      throw error;
+    }
   },
 
   /**
-   * Delete a member
+   * Delete a member directly in backend API
    */
   async delete(id: string): Promise<boolean> {
     try {
       await apiClient.delete(`/fitness/members/${id}`);
-    } catch (error) {
-      console.warn(`Backend API DELETE /fitness/members/${id} failed, removing locally:`, error);
+      return true;
+    } catch (error: any) {
+      console.error(`Backend API DELETE /fitness/members/${id} failed:`, error);
+      throw error;
     }
-
-    const list = getStoredItem<Member[]>(STORAGE_KEY, initialMembers);
-    const filtered = list.filter((m) => m.id !== id);
-    setStoredItem(STORAGE_KEY, filtered);
-    return true;
   },
 };
 

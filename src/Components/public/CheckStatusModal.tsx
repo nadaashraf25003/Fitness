@@ -164,7 +164,7 @@ export const CheckStatusModal: React.FC<CheckStatusModalProps> = ({
 
   const handleOpenProfile = (req: SubscriptionRequest) => {
     try {
-      localStorage.setItem('gym_verified_public_member', JSON.stringify(req));
+      sessionStorage.setItem('gym_verified_public_member', JSON.stringify(req));
     } catch (e) {
       console.warn('Error saving verified member:', e);
     }

@@ -2,16 +2,7 @@ import { apiClient } from './apiClient';
 import { DashboardStats, TopMemberItem, BranchInfo } from '../types/dashboard.types';
 import { AttendanceStats, CheckInEntry } from '../types/attendance.types';
 import { PaymentRecord } from '../types/subscription.types';
-import { getStoredItem, setStoredItem } from '../utils/storageUtils';
 
-const DASHBOARD_CACHE_KEY = 'gym_dashboard_cache';
-
-/**
- * Default/fallback stats used when the backend is unreachable.
- * Matches the flat API shape:
- * { members, active_subscriptions, pending_requests,
- *   today_subscriptions, today_attendance, today_income }
- */
 const defaultStats: DashboardStats = {
   members: 0,
   active_subscriptions: 0,
@@ -23,14 +14,8 @@ const defaultStats: DashboardStats = {
 
 export const dashboardService = {
   /**
-   * Fetch flat summary statistics for a branch.
+   * Fetch flat summary statistics for a branch directly from backend API.
    * Endpoint: GET /fitness/admin/dashboard/{branchId}
-   *
-   * Returns:
-   * {
-   *   members, active_subscriptions, pending_requests,
-   *   today_subscriptions, today_attendance, today_income
-   * }
    */
   async getDashboard(branchId: number = 1): Promise<DashboardStats> {
     try {
@@ -38,20 +23,19 @@ export const dashboardService = {
         `/fitness/admin/dashboard/${branchId}`
       );
       if (response.data) {
-        setStoredItem(`${DASHBOARD_CACHE_KEY}_${branchId}`, response.data);
         return response.data;
       }
-    } catch (error) {
-      console.warn(
-        `[dashboardService] GET /fitness/admin/dashboard/${branchId} failed, using cache:`,
+    } catch (error: any) {
+      console.error(
+        `[dashboardService] GET /fitness/admin/dashboard/${branchId} error:`,
         error
       );
     }
-    return getStoredItem<DashboardStats>(`${DASHBOARD_CACHE_KEY}_${branchId}`, defaultStats);
+    return defaultStats;
   },
 
   /**
-   * Fetch live visitor metrics (checked-in today, currently inside, monthly total).
+   * Fetch live visitor metrics directly from backend API.
    * Endpoint: GET /fitness/attendance/stats?branch_id={branchId}
    */
   async getAttendanceStats(branchId?: number): Promise<AttendanceStats> {
@@ -63,8 +47,8 @@ export const dashboardService = {
       if (response.data) {
         return response.data;
       }
-    } catch (error) {
-      console.warn('[dashboardService] GET /fitness/attendance/stats failed, using fallback:', error);
+    } catch (error: any) {
+      console.error('[dashboardService] GET /fitness/attendance/stats error:', error);
     }
     return {
       checkedInToday: 0,
@@ -74,7 +58,7 @@ export const dashboardService = {
   },
 
   /**
-   * Fetch today's check-in activity log (recent 5 entries shown on dashboard).
+   * Fetch today's check-in activity log directly from backend API.
    * Endpoint: GET /fitness/attendance/today?branch_id={branchId}
    */
   async getTodayAttendance(branchId?: number): Promise<CheckInEntry[]> {
@@ -86,14 +70,14 @@ export const dashboardService = {
       if (Array.isArray(response.data)) {
         return response.data;
       }
-    } catch (error) {
-      console.warn('[dashboardService] GET /fitness/attendance/today failed, using empty list:', error);
+    } catch (error: any) {
+      console.error('[dashboardService] GET /fitness/attendance/today error:', error);
     }
     return [];
   },
 
   /**
-   * Fetch top 5 members by attendance count.
+   * Fetch top 5 members by attendance count directly from backend API.
    * Endpoint: GET /fitness/admin/report/top-members/{branchId}
    */
   async getTopMembers(branchId: number = 1): Promise<TopMemberItem[]> {
@@ -104,14 +88,14 @@ export const dashboardService = {
       if (Array.isArray(response.data) && response.data.length > 0) {
         return response.data.slice(0, 5);
       }
-    } catch (error) {
-      console.warn('[dashboardService] GET /fitness/admin/report/top-members failed:', error);
+    } catch (error: any) {
+      console.error('[dashboardService] GET /fitness/admin/report/top-members error:', error);
     }
     return [];
   },
 
   /**
-   * Fetch branch details.
+   * Fetch branch details directly from backend API.
    * Endpoint: GET /fitness/user/branch/{branchId}
    */
   async getBranchInfo(branchId: number = 1): Promise<BranchInfo | null> {
@@ -122,8 +106,8 @@ export const dashboardService = {
       if (response.data?.branch) {
         return response.data.branch;
       }
-    } catch (error) {
-      console.warn(`[dashboardService] GET /fitness/user/branch/${branchId} failed:`, error);
+    } catch (error: any) {
+      console.error(`[dashboardService] GET /fitness/user/branch/${branchId} error:`, error);
     }
     return {
       id: branchId,
@@ -164,11 +148,12 @@ export const dashboardService = {
         });
         return last6Months.map((m) => ({ label: m.label, value: Math.round(m.value) }));
       }
-    } catch (error) {
-      console.warn('[dashboardService] GET /fitness/payments failed, revenue trend unavailable:', error);
+    } catch (error: any) {
+      console.error('[dashboardService] GET /fitness/payments error:', error);
     }
 
-    // Return zeros for all 6 months when backend is unavailable
     return last6Months.map((m) => ({ label: m.label, value: 0 }));
   },
 };
+
+export default dashboardService;

@@ -48,15 +48,15 @@ export const ProfilePage: React.FC = () => {
     memberCode: dbMember.memberCode,
   });
 
-  // Load verified member from localStorage or active members in DB
+  // Load verified member from sessionStorage or active members in DB
   useEffect(() => {
     const loadCurrentMember = async () => {
       try {
-        const stored = localStorage.getItem(VERIFIED_STORAGE_KEY);
+        const stored = sessionStorage.getItem(VERIFIED_STORAGE_KEY);
         if (stored) {
           const parsed: SubscriptionRequest = JSON.parse(stored);
           // Check if there is an official database member record
-          const allMembers = memberService.getAll();
+          const allMembers = await memberService.fetchMembers().catch(() => []);
           const matchedDbMember = allMembers.find(
             (m) =>
               m.id.toLowerCase() === parsed.id.toLowerCase() ||
@@ -67,7 +67,7 @@ export const ProfilePage: React.FC = () => {
           if (matchedDbMember) {
             const mapped = mapMemberToProfile(matchedDbMember);
             setMember(mapped);
-            localStorage.setItem(VERIFIED_STORAGE_KEY, JSON.stringify(mapped));
+            sessionStorage.setItem(VERIFIED_STORAGE_KEY, JSON.stringify(mapped));
             return;
           }
 
@@ -76,21 +76,13 @@ export const ProfilePage: React.FC = () => {
         }
 
         // Fallback: look in memberService database first
-        const allDbMembers = memberService.getAll();
+        const allDbMembers = await memberService.fetchMembers().catch(() => []);
         if (allDbMembers.length > 0) {
           const firstDb = allDbMembers[0];
           const mapped = mapMemberToProfile(firstDb);
           setMember(mapped);
-          localStorage.setItem(VERIFIED_STORAGE_KEY, JSON.stringify(mapped));
+          sessionStorage.setItem(VERIFIED_STORAGE_KEY, JSON.stringify(mapped));
           return;
-        }
-
-        // Fallback to subscription requests
-        const allRequests = subscriptionService.getRequests();
-        if (allRequests.length > 0) {
-          const first = allRequests[0];
-          setMember(first);
-          localStorage.setItem(VERIFIED_STORAGE_KEY, JSON.stringify(first));
         }
       } catch (err) {
         console.warn('Error loading member profile:', err);
@@ -100,7 +92,7 @@ export const ProfilePage: React.FC = () => {
     loadCurrentMember();
   }, []);
 
-  const handleSearchMember = (e: React.FormEvent) => {
+  const handleSearchMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
 
@@ -108,7 +100,7 @@ export const ProfilePage: React.FC = () => {
     const numOnly = clean.replace(/[^0-9]/g, '');
 
     // 1. Search official DB members first
-    const allDbMembers = memberService.getAll();
+    const allDbMembers = await memberService.fetchMembers().catch(() => []);
     const matchedDb = allDbMembers.find((m) => {
       const idMatch = m.id.toLowerCase() === clean || m.id.toLowerCase().replace('mem-', '') === clean.replace('mem-', '');
       const emailMatch = m.email.toLowerCase() === clean;
@@ -121,42 +113,17 @@ export const ProfilePage: React.FC = () => {
     if (matchedDb) {
       const mapped = mapMemberToProfile(matchedDb);
       setMember(mapped);
-      localStorage.setItem(VERIFIED_STORAGE_KEY, JSON.stringify(mapped));
+      sessionStorage.setItem(VERIFIED_STORAGE_KEY, JSON.stringify(mapped));
       setSearchError('');
       setSearchQuery('');
       return;
     }
 
-    // 2. Search subscription requests
-    const allRequests = subscriptionService.getRequests();
-    const foundReq = allRequests.find((r: any) => {
-      const emailMatch = r.email?.toLowerCase() === clean;
-      const idMatch = r.id?.toLowerCase() === clean || r.id?.replace('req-', '').toLowerCase() === clean.replace('req-', '');
-      const phoneMatch = numOnly.length >= 7 && r.phone?.replace(/[^0-9]/g, '') === numOnly;
-      const nameMatch = r.fullName?.toLowerCase() === clean;
-      return emailMatch || idMatch || phoneMatch || nameMatch;
-    });
-
-    if (foundReq) {
-      // If approved, check if member exists in DB to get real mem- ID
-      const matchingDb = allDbMembers.find(
-        (m) =>
-          m.email.toLowerCase() === foundReq.email.toLowerCase() ||
-          (m.phone && foundReq.phone && m.phone.replace(/[^0-9]/g, '') === foundReq.phone.replace(/[^0-9]/g, ''))
-      );
-
-      const finalMember = matchingDb ? mapMemberToProfile(matchingDb) : foundReq;
-      setMember(finalMember);
-      localStorage.setItem(VERIFIED_STORAGE_KEY, JSON.stringify(finalMember));
-      setSearchError('');
-      setSearchQuery('');
-    } else {
-      setSearchError(`No member or application found for "${searchQuery}". Please check your email, phone, or Member ID.`);
-    }
+    setSearchError(`No member or application found for "${searchQuery}". Please check your email, phone, or Member ID.`);
   };
 
   const handleSwitchMember = () => {
-    localStorage.removeItem(VERIFIED_STORAGE_KEY);
+    sessionStorage.removeItem(VERIFIED_STORAGE_KEY);
     setMember(null);
   };
 

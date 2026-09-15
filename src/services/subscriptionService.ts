@@ -4,68 +4,17 @@ import {
   RequestStatus,
 } from "../types/subscription.types";
 import { apiClient } from "./apiClient";
-import { getStoredItem, setStoredItem } from "../utils/storageUtils";
-import { memberService } from "./memberService";
-
-const PLANS_KEY = "gym_plans";
-const REQUESTS_KEY = "gym_subscription_requests";
-
-const initialPlans: Plan[] = [
-  {
-    id: "plan-basic",
-    name: "Basic Monthly",
-    price: 29.99,
-    durationMonths: 1,
-    features: ["Access to Gym Floor", "Locker Room Access", "Free WiFi"],
-    isPopular: false,
-    isActive: true,
-  },
-  {
-    id: "plan-pro",
-    name: "Pro 3-Month",
-    price: 79.99,
-    durationMonths: 3,
-    features: [
-      "Gym Floor & Cardio",
-      "All Group Classes",
-      "1 Free Trainer Session",
-      "Sauna & Steam",
-    ],
-    isPopular: true,
-    isActive: true,
-  },
-  {
-    id: "plan-vip",
-    name: "VIP Annual",
-    price: 249.99,
-    durationMonths: 12,
-    features: [
-      "24/7 Unlimited Access",
-      "Unlimited Classes",
-      "Dedicated Personal Trainer",
-      "Nutrition Consultation",
-      "Free Merchandise",
-    ],
-    isPopular: false,
-    isActive: true,
-  },
-];
-
-const initialRequests: SubscriptionRequest[] = [];
 
 export const subscriptionService = {
   // ==========================================
-  // PLANS API
+  // PLANS API (DIRECT BACKEND)
   // ==========================================
 
   /**
-   * Synchronous get for immediate render
+   * Synchronous helper for initial render
    */
   getPlans(): Plan[] {
-    const cached = getStoredItem<Plan[]>(PLANS_KEY, initialPlans);
-    // Background fetch to keep storage fresh
-    this.fetchPlans().catch(() => {});
-    return cached;
+    return [];
   },
 
   /**
@@ -74,63 +23,44 @@ export const subscriptionService = {
   async fetchPlans(): Promise<Plan[]> {
     try {
       const response = await apiClient.get<Plan[]>("/fitness/plans");
-      if (Array.isArray(response.data) && response.data.length > 0) {
-        setStoredItem(PLANS_KEY, response.data);
+      if (Array.isArray(response.data)) {
         return response.data;
       }
-    } catch (error) {
-      console.warn(
-        "Backend API /fitness/plans unavailable, using local cache:",
-        error,
-      );
+    } catch (error: any) {
+      console.error("Backend API /fitness/plans error:", error);
+      throw error;
     }
-    return getStoredItem<Plan[]>(PLANS_KEY, initialPlans);
+    return [];
   },
 
   /**
-   * Get single plan by ID
+   * Get single plan by ID directly from backend API
    */
   async getPlanById(planId: string): Promise<Plan | null> {
     try {
       const response = await apiClient.get<Plan>(`/fitness/plans/${planId}`);
       return response.data;
-    } catch (error) {
-      const plans = this.getPlans();
-      return plans.find((p) => p.id === planId) || null;
+    } catch (error: any) {
+      console.error(`Backend API /fitness/plans/${planId} error:`, error);
+      return null;
     }
   },
 
   /**
-   * Create new membership plan
+   * Create new membership plan directly in backend API
    */
   async createPlan(plan: Omit<Plan, "id">): Promise<Plan> {
     try {
       const response = await apiClient.post<Plan>("/fitness/plans", plan);
-      if (response.data && response.data.id) {
-        const plans = getStoredItem<Plan[]>(PLANS_KEY, initialPlans);
-        plans.push(response.data);
-        setStoredItem(PLANS_KEY, plans);
-        return response.data;
-      }
-    } catch (error) {
-      console.warn(
-        "Backend API POST /fitness/plans failed, saving locally:",
-        error,
-      );
+      return response.data;
+    } catch (error: any) {
+      console.error("Backend API POST /fitness/plans failed:", error);
+      throw error;
     }
-
-    const plans = getStoredItem<Plan[]>(PLANS_KEY, initialPlans);
-    const newPlan: Plan = {
-      ...plan,
-      id: `plan-${Date.now()}`,
-    };
-    plans.push(newPlan);
-    setStoredItem(PLANS_KEY, plans);
-    return newPlan;
   },
 
   /**
-   * Update existing plan
+   * Update existing plan directly in backend API
    */
   async updatePlan(
     planId: string,
@@ -141,47 +71,24 @@ export const subscriptionService = {
         `/fitness/plans/${planId}`,
         updates,
       );
-      if (response.data) {
-        const plans = getStoredItem<Plan[]>(PLANS_KEY, initialPlans);
-        const idx = plans.findIndex((p) => p.id === planId);
-        if (idx !== -1) {
-          plans[idx] = response.data;
-          setStoredItem(PLANS_KEY, plans);
-        }
-        return response.data;
-      }
-    } catch (error) {
-      console.warn(
-        `Backend API PUT /fitness/plans/${planId} failed, updating locally:`,
-        error,
-      );
+      return response.data;
+    } catch (error: any) {
+      console.error(`Backend API PUT /fitness/plans/${planId} failed:`, error);
+      throw error;
     }
-
-    const plans = getStoredItem<Plan[]>(PLANS_KEY, initialPlans);
-    const idx = plans.findIndex((p) => p.id === planId);
-    if (idx === -1) return null;
-    plans[idx] = { ...plans[idx], ...updates };
-    setStoredItem(PLANS_KEY, plans);
-    return plans[idx];
   },
 
   /**
-   * Delete plan
+   * Delete plan directly in backend API
    */
   async deletePlan(planId: string): Promise<boolean> {
     try {
       await apiClient.delete(`/fitness/plans/${planId}`);
-    } catch (error) {
-      console.warn(
-        `Backend API DELETE /fitness/plans/${planId} failed, removing locally:`,
-        error,
-      );
+      return true;
+    } catch (error: any) {
+      console.error(`Backend API DELETE /fitness/plans/${planId} failed:`, error);
+      throw error;
     }
-
-    const plans = getStoredItem<Plan[]>(PLANS_KEY, initialPlans);
-    const filtered = plans.filter((p) => p.id !== planId);
-    setStoredItem(PLANS_KEY, filtered);
-    return true;
   },
 
   // ==========================================
@@ -189,10 +96,10 @@ export const subscriptionService = {
   // ==========================================
 
   /**
-   * Synchronous get requests from cache
+   * Synchronous get requests helper (returns empty array before fetch)
    */
   getRequests(): SubscriptionRequest[] {
-    return getStoredItem<SubscriptionRequest[]>(REQUESTS_KEY, []);
+    return [];
   },
 
   /**
@@ -210,19 +117,9 @@ export const subscriptionService = {
         },
       );
       if (Array.isArray(response.data)) {
-        const plans = this.getPlans();
         const mapped: SubscriptionRequest[] = response.data.map((item: any) => {
-          const matchedPlan = plans.find(
-            (p) =>
-              (item.plan_id && p.id === item.plan_id) ||
-              (item.plan_name &&
-                p.name.toLowerCase() === item.plan_name.toLowerCase()) ||
-              p.durationMonths === item.duration,
-          );
-
           const planName =
             item.plan_name ||
-            matchedPlan?.name ||
             (item.duration === 1
               ? "Basic Monthly"
               : item.duration === 3
@@ -231,8 +128,7 @@ export const subscriptionService = {
                   ? "VIP Annual"
                   : `${item.duration || 1}-Month Membership`);
 
-          const planId =
-            item.plan_id || matchedPlan?.id || `plan-${item.duration || 1}`;
+          const planId = item.plan_id || `plan-${item.duration || 1}`;
 
           const idStr = String(
             item.request_id !== undefined && item.request_id !== null
@@ -283,21 +179,21 @@ export const subscriptionService = {
                 ? item.paid_amount
                 : item.paidAmount !== undefined && item.paidAmount !== null
                   ? item.paidAmount
-                  : (matchedPlan?.price ?? 0),
+                  : 0,
             paymentMethod: item.payment_method || item.paymentMethod || "Visa",
-            duration: item.duration ?? matchedPlan?.durationMonths ?? 1,
+            duration: item.duration ?? 1,
             memberCode: item.member_code || item.memberCode,
             branchId: item.branch_id || branchId || 1,
           };
         });
 
-        setStoredItem(REQUESTS_KEY, mapped);
         return mapped;
       }
-    } catch (error) {
-      console.warn("Backend API /fitness/admin/requests error:", error);
+    } catch (error: any) {
+      console.error("Backend API /fitness/admin/requests error:", error);
+      throw error;
     }
-    return getStoredItem<SubscriptionRequest[]>(REQUESTS_KEY, []);
+    return [];
   },
 
   /**
@@ -338,27 +234,15 @@ export const subscriptionService = {
             : `req-${res.data.request_id}`
           : `req-${Date.now()}`;
 
-      const newRequest: SubscriptionRequest = {
+      return {
         ...request,
         id: newId,
         status: "pending",
         createdAt: new Date().toISOString(),
       };
-
-      const current = getStoredItem<SubscriptionRequest[]>(REQUESTS_KEY, []);
-      current.unshift(newRequest);
-      setStoredItem(REQUESTS_KEY, current);
-
-      return newRequest;
-    } catch (err) {
+    } catch (err: any) {
       console.error("Backend API POST /fitness/request failed:", err);
-      const fallbackRequest: SubscriptionRequest = {
-        ...request,
-        id: `req-${Date.now()}`,
-        status: "pending",
-        createdAt: new Date().toISOString(),
-      };
-      return fallbackRequest;
+      throw err;
     }
   },
 
@@ -374,7 +258,7 @@ export const subscriptionService = {
           apiClient.post(`/fitness/admin/request/${cleanId}/approve`),
         );
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error(
         `Backend API approve request failed for ${requestId}:`,
         error,
@@ -395,7 +279,7 @@ export const subscriptionService = {
           apiClient.post(`/fitness/admin/request/${cleanId}/reject`),
         );
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error(
         `Backend API reject request failed for ${requestId}:`,
         error,
@@ -419,7 +303,7 @@ export const subscriptionService = {
   },
 
   /**
-   * Check if an email already exists in backend database or local storage cache
+   * Check if an email already exists in backend database directly
    */
   async checkEmail(email: string): Promise<{
     exists: boolean;
@@ -451,44 +335,7 @@ export const subscriptionService = {
       ) {
         return error.response.data;
       }
-      console.warn(
-        "Backend API /fitness/check-email unavailable, checking local storage cache:",
-        error,
-      );
-    }
-
-    // Fallback: Check local storage members
-    const localMembers = getStoredItem<any[]>("gym_members", []);
-    const foundMember = localMembers.find(
-      (m) => m.email && m.email.trim().toLowerCase() === cleanEmail,
-    );
-    if (foundMember) {
-      return {
-        exists: true,
-        reason: "member",
-        message: `A registered member account with '${cleanEmail}' already exists.`,
-        member: foundMember,
-      };
-    }
-
-    // Fallback: Check local storage requests
-    const localRequests = getStoredItem<SubscriptionRequest[]>(
-      REQUESTS_KEY,
-      initialRequests,
-    );
-    const foundReq = localRequests.find(
-      (r) =>
-        r.email &&
-        r.email.trim().toLowerCase() === cleanEmail &&
-        (r.status === "pending" || r.status === "approved"),
-    );
-    if (foundReq) {
-      return {
-        exists: true,
-        reason: "request",
-        message: `A subscription application for '${cleanEmail}' is currently ${foundReq.status}.`,
-        request: foundReq,
-      };
+      console.error("Backend API /fitness/check-email error:", error);
     }
 
     return {
@@ -499,7 +346,7 @@ export const subscriptionService = {
   },
 
   /**
-   * Fetch all registered gym branches
+   * Fetch all registered gym branches directly from backend
    */
   async fetchBranches(): Promise<
     Array<{
@@ -516,8 +363,8 @@ export const subscriptionService = {
       if (Array.isArray(res.data) && res.data.length > 0) {
         return res.data;
       }
-    } catch (e) {
-      console.warn("Error fetching branches, using default list:", e);
+    } catch (e: any) {
+      console.error("Error fetching branches from backend:", e);
     }
     return [
       {
