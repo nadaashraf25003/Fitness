@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Literal, Optional
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, ConfigDict
@@ -18,7 +18,7 @@ class PaymentCreate(BaseModel):
     subscription_id: str
     amount: float
     date: str
-    method: str = "cash"
+    method: Literal["cash", "visa"] = "cash"
     status: str = "paid"
     branch_id: Optional[int] = 1
 
@@ -32,7 +32,7 @@ class PaymentCreate(BaseModel):
 def get_all_payments(
     branch_id: int = 1,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(["admin", "staff"])),
+    _: User = Depends(require_roles(["admin", "staff", "reception"])),
 ):
     """Get all payments for a branch."""
     payments = db.query(Payment).filter(Payment.branch_id == branch_id).order_by(Payment.date.desc()).all()

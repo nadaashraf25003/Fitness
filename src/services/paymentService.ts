@@ -4,7 +4,7 @@ import { apiClient } from './apiClient';
 export const paymentService = {
   async getAll(branchId: number = 1): Promise<PaymentRecord[]> {
     try {
-      const response = await apiClient.get(`/payments?branch_id=${branchId}`);
+      const response = await apiClient.get(`/fitness/payments?branch_id=${branchId}`);
       return response.data;
     } catch (error: any) {
       console.error('Failed to fetch payments:', error);
@@ -14,7 +14,7 @@ export const paymentService = {
 
   async getByMemberId(memberId: string): Promise<PaymentRecord[]> {
     try {
-      const response = await apiClient.get(`/payments/member/${memberId}`);
+      const response = await apiClient.get(`/fitness/payments/member/${memberId}`);
       return response.data;
     } catch (error: any) {
       console.error('Failed to fetch member payments:', error);
@@ -24,7 +24,7 @@ export const paymentService = {
 
   async getIncomeReport(branchId: number = 1): Promise<any> {
     try {
-      const response = await apiClient.get(`/admin/report/income/${branchId}`);
+      const response = await apiClient.get(`/fitness/admin/report/income/${branchId}`);
       return response.data;
     } catch (error: any) {
       console.error('Failed to fetch income report:', error);
@@ -34,7 +34,7 @@ export const paymentService = {
 
   async getSubscriptionReport(branchId: number = 1): Promise<any> {
     try {
-      const response = await apiClient.get(`/admin/report/subscriptions/${branchId}`);
+      const response = await apiClient.get(`/fitness/admin/report/subscriptions/${branchId}`);
       return response.data;
     } catch (error: any) {
       console.error('Failed to fetch subscription report:', error);
@@ -44,7 +44,7 @@ export const paymentService = {
 
   async getTopMembers(branchId: number = 1): Promise<any> {
     try {
-      const response = await apiClient.get(`/admin/report/top-members/${branchId}`);
+      const response = await apiClient.get(`/fitness/admin/report/top-members/${branchId}`);
       return response.data;
     } catch (error: any) {
       console.error('Failed to fetch top members:', error);
@@ -54,7 +54,7 @@ export const paymentService = {
 
   async getExpiredSubscriptions(branchId: number = 1): Promise<any> {
     try {
-      const response = await apiClient.get(`/admin/report/expired-subscriptions/${branchId}`);
+      const response = await apiClient.get(`/fitness/admin/report/expired-subscriptions/${branchId}`);
       return response.data;
     } catch (error: any) {
       console.error('Failed to fetch expired subscriptions:', error);
@@ -64,7 +64,7 @@ export const paymentService = {
 
   async create(payment: Omit<PaymentRecord, 'id'>): Promise<PaymentRecord> {
     try {
-      const response = await apiClient.post('/payments', payment);
+      const response = await apiClient.post('/fitness/payments', payment);
       return response.data;
     } catch (error: any) {
       console.error('Failed to create payment:', error);

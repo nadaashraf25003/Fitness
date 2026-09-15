@@ -5,12 +5,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.database import Base, engine, SessionLocal
+from app.data.seed import seed_initial_data
+
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: create tables
+    # Startup: create tables and seed initial records
     Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    try:
+        seed_initial_data(db)
+    finally:
+        db.close()
     yield
     # Shutdown logic (if any)
 
@@ -27,6 +34,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

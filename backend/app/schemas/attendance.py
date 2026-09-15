@@ -14,7 +14,8 @@ class CheckInRequest(BaseModel):
 
 
 class CheckOutRequest(BaseModel):
-    attendance_id: str
+    attendance_id: Optional[str] = None
+    member_id: Optional[str] = None
 
     model_config = ConfigDict(
         alias_generator=to_camel,

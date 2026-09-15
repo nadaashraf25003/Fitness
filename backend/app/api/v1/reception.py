@@ -10,6 +10,7 @@ from app.models.user import User
 from app.models.branch import Branch
 from app.models.member import Member
 from app.models.attendance import Attendance
+from app.models.plan import Plan
 from app.models.subscription_request import SubscriptionRequest
 from app.schemas.reception import (
     ReceptionLoginRequest,
@@ -276,13 +277,13 @@ def reception_attendance_checkin(
 
 
 # -------------------------------------------------------------
+# -------------------------------------------------------------
 # 4. Create Subscription Request
 # -------------------------------------------------------------
 @router.post("/request")
 def create_subscription_request(
     payload: Optional[CreateRequestPayload] = None,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
 ):
     """Create a pending request for Admin approval (new, renew, extend, cancel)."""
     if payload is None:
@@ -292,10 +293,8 @@ def create_subscription_request(
     if request_type not in ["new", "renew", "extend", "cancel"]:
         return JSONResponse(status_code=400, content={"message": "Invalid request type"})
 
-    if payload.branch_id is None:
-        return JSONResponse(status_code=400, content={"message": "Branch ID is required"})
-
-    branch = db.query(Branch).filter(Branch.id == payload.branch_id).first()
+    branch_id = payload.branch_id or 1
+    branch = db.query(Branch).filter(Branch.id == branch_id).first()
     if not branch:
         return JSONResponse(status_code=404, content={"message": "Branch not found"})
 
@@ -303,10 +302,13 @@ def create_subscription_request(
     if request_type == "new":
         if not payload.member or not isinstance(payload.member, dict):
             return JSONResponse(status_code=400, content={"message": "member is required"})
-        
-        name = payload.member.get("name")
+
+        name = payload.member.get("name") or payload.member.get("fullName")
         phone = payload.member.get("phone")
+        email = payload.member.get("email") or f"{phone}@gym.com"
         photo = payload.member.get("photo", "")
+        member_notes = payload.member.get("notes") or ""
+
         if not name:
             return JSONResponse(status_code=400, content={"message": "name is required"})
         if not phone:
@@ -315,33 +317,111 @@ def create_subscription_request(
         if not payload.subscription or not isinstance(payload.subscription, dict):
             return JSONResponse(status_code=400, content={"message": "Subscription data is required"})
 
-        start_date_str = payload.subscription.get("start_date")
-        duration = payload.subscription.get("duration")
-        price = payload.subscription.get("price")
-        paid_amount = payload.subscription.get("paid_amount")
-        payment_method = payload.subscription.get("payment_method", "كاش")
+        start_date_str = (
+            payload.subscription.get("start_date")
+            or payload.subscription.get("requestedStartDate")
+            or date.today().strftime("%Y-%m-%d")
+        )
+        duration_raw = (
+            payload.subscription.get("duration")
+            or payload.subscription.get("durationMonths")
+            or payload.subscription.get("duration_months")
+            or 1
+        )
+        try:
+            duration = int(duration_raw)
+        except Exception:
+            duration = 1
 
-        if not start_date_str:
-            return JSONResponse(status_code=400, content={"message": "start_date is required"})
-        if duration is None or int(duration) <= 0:
-            return JSONResponse(status_code=400, content={"message": "Invalid duration"})
+        if duration <= 0:
+            duration = 1
 
         try:
             start_date_obj = datetime.strptime(start_date_str, "%Y-%m-%d").date()
         except ValueError:
-            return JSONResponse(status_code=400, content={"message": "Invalid start date"})
+            start_date_obj = date.today()
+            start_date_str = start_date_obj.strftime("%Y-%m-%d")
 
-        end_date_obj = start_date_obj + timedelta(days=int(duration) * 30 - 1)
+        end_date_obj = start_date_obj + timedelta(days=duration * 30 - 1)
         end_date_str = end_date_obj.strftime("%Y-%m-%d")
 
+        plan_id = payload.subscription.get("plan_id") or payload.subscription.get("planId")
+        plan_name = payload.subscription.get("plan_name") or payload.subscription.get("planName")
+
+        if not plan_name and plan_id:
+            plan_obj = db.query(Plan).filter(Plan.id == plan_id).first()
+            if plan_obj:
+                plan_name = plan_obj.name
+
+        if not plan_name:
+            if duration == 1:
+                plan_name = "Basic Monthly"
+            elif duration == 3:
+                plan_name = "Pro 3-Month"
+            elif duration == 12:
+                plan_name = "VIP Annual"
+            else:
+                plan_name = f"Plan {duration} Month(s)"
+
+        if not plan_id:
+            if duration == 1:
+                plan_id = "plan-basic"
+            elif duration == 3:
+                plan_id = "plan-pro"
+            elif duration == 12:
+                plan_id = "plan-vip"
+            else:
+                plan_id = f"plan-{duration}"
+
+        price_raw = payload.subscription.get("price")
+        paid_amount_raw = (
+            payload.subscription.get("paid_amount")
+            if payload.subscription.get("paid_amount") is not None
+            else payload.subscription.get("paidAmount")
+        )
+
+        if price_raw is not None:
+            price = float(price_raw)
+        elif duration == 1:
+            price = 29.99
+        elif duration == 3:
+            price = 79.99
+        elif duration == 12:
+            price = 249.99
+        else:
+            price = round(50.0 * duration, 2)
+
+        if paid_amount_raw is not None:
+            paid_amount = float(paid_amount_raw)
+        else:
+            paid_amount = price
+
+        payment_method = (
+            payload.subscription.get("payment_method")
+            or payload.subscription.get("paymentMethod")
+            or "Visa"
+        )
+        sub_notes = payload.subscription.get("notes") or ""
+        combined_notes = (
+            member_notes
+            if (member_notes and member_notes == sub_notes)
+            else f"{member_notes} {sub_notes}".strip()
+        ) or None
+
         new_req = SubscriptionRequest(
-            branch_id=payload.branch_id,
+            branch_id=branch_id,
             full_name=name,
-            email=f"{phone}@gym.com",
+            email=email,
             phone=phone,
-            plan_id="plan-standard",
-            plan_name=f"Plan {duration} Month(s)",
+            plan_id=plan_id,
+            plan_name=plan_name,
             requested_start_date=start_date_str,
+            end_date=end_date_str,
+            duration=duration,
+            price=price,
+            paid_amount=paid_amount,
+            payment_method=payment_method,
+            notes=combined_notes,
             request_type="new",
             status="pending",
         )
@@ -350,7 +430,7 @@ def create_subscription_request(
         db.refresh(new_req)
 
         req_id_clean = new_req.id.replace("req-", "")
-        req_id_val = int(req_id_clean) if req_id_clean.isdigit() else 50
+        req_id_val = int(req_id_clean) if req_id_clean.isdigit() else new_req.id
 
         return JSONResponse(
             status_code=201,
@@ -365,6 +445,12 @@ def create_subscription_request(
                     "duration": duration,
                     "paid_amount": paid_amount,
                     "payment_method": payment_method,
+                    "email": email,
+                    "phone": phone,
+                    "plan_id": plan_id,
+                    "plan_name": plan_name,
+                    "requested_start_date": start_date_str,
+                    "notes": combined_notes,
                 },
                 "request_for_subscription": {
                     "start_date": start_date_str,
@@ -394,7 +480,7 @@ def create_subscription_request(
     if not member:
         return JSONResponse(status_code=404, content={"message": "Member not found"})
 
-    if member.branch_id != payload.branch_id:
+    if member.branch_id != branch_id:
         return JSONResponse(status_code=403, content={"message": "Member belongs to another branch"})
 
     # Check pending request already exists
@@ -419,31 +505,39 @@ def create_subscription_request(
         if not payload.subscription or not isinstance(payload.subscription, dict):
             return JSONResponse(status_code=400, content={"message": "Subscription data is required"})
 
-        start_date_str = payload.subscription.get("start_date")
-        duration = payload.subscription.get("duration", 1)
-        price = payload.subscription.get("price", 500)
-        paid_amount = payload.subscription.get("paid_amount", 500)
-        payment_method = payload.subscription.get("payment_method", "كاش")
-
-        if not start_date_str:
-            return JSONResponse(status_code=400, content={"message": "start_date is required"})
+        start_date_str = payload.subscription.get("start_date") or date.today().strftime("%Y-%m-%d")
+        duration = int(payload.subscription.get("duration", 1))
+        price = float(payload.subscription.get("price", 500))
+        paid_amount = float(payload.subscription.get("paid_amount", price))
+        payment_method = payload.subscription.get("payment_method", "Visa")
+        plan_name = payload.subscription.get("plan_name") or f"Renewal {duration} Month(s)"
+        plan_id = payload.subscription.get("plan_id") or "plan-renew"
 
         try:
             start_date_obj = datetime.strptime(start_date_str, "%Y-%m-%d").date()
         except ValueError:
-            return JSONResponse(status_code=400, content={"message": "Invalid start date"})
+            start_date_obj = date.today()
+            start_date_str = start_date_obj.strftime("%Y-%m-%d")
 
-        end_date_obj = start_date_obj + timedelta(days=int(duration) * 30 - 1)
+        end_date_obj = start_date_obj + timedelta(days=duration * 30 - 1)
         end_date_str = end_date_obj.strftime("%Y-%m-%d")
 
         new_req = SubscriptionRequest(
-            branch_id=payload.branch_id,
+            branch_id=branch_id,
+            member_id=member.id,
+            member_code=member.member_code,
             full_name=member.full_name,
             email=member.email,
             phone=member.phone,
-            plan_id="plan-renew",
-            plan_name=f"Renewal {duration} Month(s)",
+            plan_id=plan_id,
+            plan_name=plan_name,
             requested_start_date=start_date_str,
+            end_date=end_date_str,
+            duration=duration,
+            price=price,
+            paid_amount=paid_amount,
+            payment_method=payment_method,
+            notes=member.note,
             request_type="renew",
             status="pending",
         )
@@ -452,8 +546,8 @@ def create_subscription_request(
         db.refresh(new_req)
 
         req_id_clean = new_req.id.replace("req-", "")
-        req_id_val = int(req_id_clean) if req_id_clean.isdigit() else 50
-        mem_code = int(member.member_code) if (member.member_code and member.member_code.isdigit()) else 15
+        req_id_val = int(req_id_clean) if req_id_clean.isdigit() else new_req.id
+        mem_code = int(member.member_code) if (member.member_code and member.member_code.isdigit()) else (member.member_code or 15)
 
         return JSONResponse(
             status_code=201,
@@ -468,6 +562,10 @@ def create_subscription_request(
                     "duration": duration,
                     "paid_amount": paid_amount,
                     "payment_method": payment_method,
+                    "email": member.email,
+                    "phone": member.phone,
+                    "plan_id": plan_id,
+                    "plan_name": plan_name,
                 },
                 "request_for_subscription": {
                     "start_date": start_date_str,
@@ -485,10 +583,12 @@ def create_subscription_request(
         if not payload.subscription or not isinstance(payload.subscription, dict):
             return JSONResponse(status_code=400, content={"message": "Subscription data is required"})
 
-        duration = payload.subscription.get("duration", 1)
-        price = payload.subscription.get("price", 500)
-        paid_amount = payload.subscription.get("paid_amount", 500)
-        payment_method = payload.subscription.get("payment_method", "كاش")
+        duration = int(payload.subscription.get("duration", 1))
+        price = float(payload.subscription.get("price", 500))
+        paid_amount = float(payload.subscription.get("paid_amount", price))
+        payment_method = payload.subscription.get("payment_method", "Visa")
+        plan_name = payload.subscription.get("plan_name") or f"Extension {duration} Month(s)"
+        plan_id = payload.subscription.get("plan_id") or "plan-extend"
 
         if sub_dict:
             last_end = datetime.strptime(sub_dict["end_date"], "%Y-%m-%d").date()
@@ -496,19 +596,27 @@ def create_subscription_request(
         else:
             start_date_obj = date.today()
 
-        end_date_obj = start_date_obj + timedelta(days=int(duration) * 30 - 1)
+        end_date_obj = start_date_obj + timedelta(days=duration * 30 - 1)
 
         start_date_str = start_date_obj.strftime("%Y-%m-%d")
         end_date_str = end_date_obj.strftime("%Y-%m-%d")
 
         new_req = SubscriptionRequest(
-            branch_id=payload.branch_id,
+            branch_id=branch_id,
+            member_id=member.id,
+            member_code=member.member_code,
             full_name=member.full_name,
             email=member.email,
             phone=member.phone,
-            plan_id="plan-extend",
-            plan_name=f"Extension {duration} Month(s)",
+            plan_id=plan_id,
+            plan_name=plan_name,
             requested_start_date=start_date_str,
+            end_date=end_date_str,
+            duration=duration,
+            price=price,
+            paid_amount=paid_amount,
+            payment_method=payment_method,
+            notes=member.note,
             request_type="extend",
             status="pending",
         )
@@ -517,8 +625,8 @@ def create_subscription_request(
         db.refresh(new_req)
 
         req_id_clean = new_req.id.replace("req-", "")
-        req_id_val = int(req_id_clean) if req_id_clean.isdigit() else 50
-        mem_code = int(member.member_code) if (member.member_code and member.member_code.isdigit()) else 15
+        req_id_val = int(req_id_clean) if req_id_clean.isdigit() else new_req.id
+        mem_code = int(member.member_code) if (member.member_code and member.member_code.isdigit()) else (member.member_code or 15)
 
         return JSONResponse(
             status_code=201,
@@ -533,6 +641,10 @@ def create_subscription_request(
                     "duration": duration,
                     "paid_amount": paid_amount,
                     "payment_method": payment_method,
+                    "email": member.email,
+                    "phone": member.phone,
+                    "plan_id": plan_id,
+                    "plan_name": plan_name,
                 },
                 "request_for_subscription": {
                     "start_date": start_date_str,
@@ -551,13 +663,20 @@ def create_subscription_request(
             return JSONResponse(status_code=400, content={"message": "No active subscription found"})
 
         new_req = SubscriptionRequest(
-            branch_id=payload.branch_id,
+            branch_id=branch_id,
+            member_id=member.id,
+            member_code=member.member_code,
             full_name=member.full_name,
             email=member.email,
             phone=member.phone,
             plan_id="cancel",
             plan_name="Cancellation Request",
             requested_start_date=date.today().strftime("%Y-%m-%d"),
+            duration=0,
+            price=0.0,
+            paid_amount=0.0,
+            payment_method="N/A",
+            notes=member.note,
             request_type="cancel",
             status="pending",
         )
@@ -566,8 +685,8 @@ def create_subscription_request(
         db.refresh(new_req)
 
         req_id_clean = new_req.id.replace("req-", "")
-        req_id_val = int(req_id_clean) if req_id_clean.isdigit() else 50
-        mem_code = int(member.member_code) if (member.member_code and member.member_code.isdigit()) else 15
+        req_id_val = int(req_id_clean) if req_id_clean.isdigit() else new_req.id
+        mem_code = int(member.member_code) if (member.member_code and member.member_code.isdigit()) else (member.member_code or 15)
 
         return JSONResponse(
             status_code=201,
@@ -582,14 +701,18 @@ def create_subscription_request(
                     "duration": 0,
                     "paid_amount": 0,
                     "payment_method": "N/A",
+                    "email": member.email,
+                    "phone": member.phone,
+                    "plan_name": "Cancellation Request",
                 },
                 "request_for_subscription": {
-                    "start_date": sub_dict["start_date"],
-                    "end_date": sub_dict["end_date"],
-                    "duration": sub_dict["duration"],
+                    "start_date": sub_dict["start_date"] if sub_dict else date.today().strftime("%Y-%m-%d"),
+                    "end_date": sub_dict["end_date"] if sub_dict else date.today().strftime("%Y-%m-%d"),
+                    "duration": sub_dict["duration"] if sub_dict else 0,
                     "price": 0,
                     "paid_amount": 0,
                     "payment_method": "N/A",
                 },
             },
         )
+

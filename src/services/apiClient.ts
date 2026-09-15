@@ -1,75 +1,58 @@
-import axios, { AxiosInstance } from 'axios';
-import { getStoredItem, setStoredItem } from '../utils/storageUtils';
+import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import { getStoredItem } from '../utils/storageUtils';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/fitness';
+// Resolve the API base URL from the environment variable baked in at build time.
+//
+// .env              (local dev)  → VITE_API_BASE_URL=http://localhost:8000
+// .env.production   (Vercel)     → VITE_API_BASE_URL=   (empty string)
+//
+// When the value is empty/absent in production, axios uses relative paths (baseURL='')
+// so all requests go to the same origin and Vercel rewrites route them to the backend.
+const _envUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
+const API_BASE_URL: string = _envUrl && _envUrl.trim() !== '' ? _envUrl.trim() : '';
 
-class APIClient {
-  private client: AxiosInstance;
-  private token: string | null = null;
+export const apiClient: AxiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 15000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-  constructor() {
-    this.token = getStoredItem<string | null>('auth_token', null);
+// Request Interceptor: Attach JWT Bearer Token to all outgoing requests
+apiClient.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    const token = getStoredItem<string | null>('gym_jwt_token', null) || localStorage.getItem('gym_jwt_token');
+    if (token && config.headers) {
+      const cleanToken = token.startsWith('"') && token.endsWith('"') ? token.slice(1, -1) : token;
+      config.headers.Authorization = `Bearer ${cleanToken}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
-    this.client = axios.create({
-      baseURL: API_BASE_URL,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+// Response Interceptor: 401 Unauthorized handling
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('gym_jwt_token');
+      localStorage.removeItem('gym_current_user');
+      const pathname = window.location.pathname;
+      const isProtectedRoute =
+        pathname.startsWith('/attendance') ||
+        pathname.startsWith('/trainers') ||
+        pathname.startsWith('/payments') ||
+        pathname.startsWith('/subscriptions') ||
+        pathname.startsWith('/admin');
 
-    // Add token to requests if available
-    this.client.interceptors.request.use((config) => {
-      if (this.token) {
-        config.headers.Authorization = `Bearer ${this.token}`;
+      if (isProtectedRoute && pathname !== '/login') {
+        window.location.href = '/login';
       }
-      return config;
-    });
-
-    // Handle 401 errors
-    this.client.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response?.status === 401) {
-          this.logout();
-        }
-        return Promise.reject(error);
-      }
-    );
+    }
+    return Promise.reject(error);
   }
-
-  setToken(token: string) {
-    this.token = token;
-    setStoredItem('auth_token', token);
-  }
-
-  getToken(): string | null {
-    return this.token;
-  }
-
-  logout() {
-    this.token = null;
-    setStoredItem<string | null>('auth_token', null);
-  }
-
-  get(url: string, config?: any) {
-    return this.client.get(url, config);
-  }
-
-  post(url: string, data?: any, config?: any) {
-    return this.client.post(url, data, config);
-  }
-
-  put(url: string, data?: any, config?: any) {
-    return this.client.put(url, data, config);
-  }
-
-  delete(url: string, config?: any) {
-    return this.client.delete(url, config);
-  }
-
-  patch(url: string, data?: any, config?: any) {
-    return this.client.patch(url, data, config);
-  }
-}
-
-export const apiClient = new APIClient();
+);

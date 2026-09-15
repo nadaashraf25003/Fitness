@@ -134,9 +134,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
             onChange={handleChange}
             options={[
               { value: 'cash', label: 'Cash' },
-              { value: 'card', label: 'Card' },
-              { value: 'transfer', label: 'Transfer' },
-              { value: 'online', label: 'Online' },
+              { value: 'visa', label: 'Visa' },
             ]}
           />
           <Select

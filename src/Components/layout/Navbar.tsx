@@ -1,9 +1,11 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../Hooks/useAuth';
 import { Avatar } from '../ui/Avatar';
 import { Button } from '../ui/Button';
 import { ThemeToggle } from '../ui/ThemeToggle';
-import { Menu, LogOut, Bell, Search, Sparkles } from 'lucide-react';
+import { PATHS } from '../../Routing/routePaths';
+import { Menu, LogOut } from 'lucide-react';
 
 interface NavbarProps {
   onToggleSidebar: () => void;
@@ -34,21 +36,28 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
         {/* Theme Toggle Button */}
         <ThemeToggle size="sm" />
 
-        {/* User Pill */}
+        {/* User Pill Link to Profile */}
         <div className="flex items-center gap-3 pl-2 sm:pl-4 border-l border-border-subtle">
-          <Avatar
-            src={user?.avatarUrl}
-            name={user?.name || 'Staff User'}
-            size="sm"
-          />
-          <div className="hidden md:block text-left">
-            <div className="text-xs font-semibold text-text-main leading-tight">
-              {user?.name || 'Gym Staff'}
+          <Link
+            to={PATHS.PROFILE}
+            className="flex items-center gap-3 p-1.5 -m-1.5 rounded-xl hover:bg-surface-elevated transition-colors cursor-pointer group"
+            title="View My Profile"
+          >
+            <Avatar
+              src={user?.avatarUrl}
+              name={user?.name || 'Staff User'}
+              size="sm"
+              className="group-hover:ring-2 group-hover:ring-brand-primary transition-all"
+            />
+            <div className="hidden md:block text-left">
+              <div className="text-xs font-semibold text-text-main leading-tight group-hover:text-brand-primary transition-colors">
+                {user?.name || 'Gym Staff'}
+              </div>
+              <div className="text-[11px] text-brand-primary font-medium">
+                {isAdmin ? 'Admin' : 'Staff'}
+              </div>
             </div>
-            <div className="text-[11px] text-brand-primary font-medium">
-              {isAdmin ? 'Admin' : 'Staff'}
-            </div>
-          </div>
+          </Link>
           
           <Button
             variant="ghost"

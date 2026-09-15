@@ -14,4 +14,8 @@ export interface Member {
   status: SubscriptionStatus;
   trainerId?: string;
   photoUrl?: string | null;
+  barcode?: string;
+  memberCode?: string;
+  branchId?: number;
+  note?: string;
 }

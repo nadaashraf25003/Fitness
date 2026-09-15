@@ -4,3 +4,4 @@ export * from './subscription.types';
 export * from './attendance.types';
 export * from './trainer.types';
 export * from './measurement.types';
+export * from './dashboard.types';
