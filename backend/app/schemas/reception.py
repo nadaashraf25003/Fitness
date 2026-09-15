@@ -49,3 +49,5 @@ class CreateRequestPayload(BaseModel):
     member_id: Optional[Union[int, str]] = None
     member: Optional[Dict[str, Any]] = None
     subscription: Optional[Dict[str, Any]] = None
+    # Only used by the local demo checkout. It never contacts a bank.
+    simulate_payment: bool = False

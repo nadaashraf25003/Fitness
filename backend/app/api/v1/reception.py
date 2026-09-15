@@ -1,4 +1,5 @@
 from datetime import datetime, date, timedelta, timezone
+import random
 from typing import Optional, Union, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
@@ -11,6 +12,7 @@ from app.models.branch import Branch
 from app.models.member import Member
 from app.models.attendance import Attendance
 from app.models.subscription_request import SubscriptionRequest
+from app.models.payment import Payment
 from app.schemas.reception import (
     ReceptionLoginRequest,
     ReceptionSearchRequest,
@@ -284,7 +286,7 @@ def create_subscription_request(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
-    """Create a pending request for Admin approval (new, renew, extend, cancel)."""
+    """Create a subscription request; demo checkout can provision a simulated paid membership."""
     if payload is None:
         return JSONResponse(status_code=400, content={"message": "Request body is required"})
 
@@ -343,9 +345,57 @@ def create_subscription_request(
             plan_name=f"Plan {duration} Month(s)",
             requested_start_date=start_date_str,
             request_type="new",
-            status="pending",
+            status="approved" if payload.simulate_payment else "pending",
         )
         db.add(new_req)
+
+        # The checkout is a local simulation, not a payment gateway. When the
+        # user completes its demo card/OTP flow, record the same result the
+        # administrator would normally create: an active member and a paid row.
+        if payload.simulate_payment:
+            member = (
+                db.query(Member)
+                .filter((Member.email == email) | (Member.phone == phone))
+                .first()
+            )
+            new_subscription_id = f"sub-{random.randint(1000, 9999)}"
+            if member:
+                member.status = "active"
+                member.join_date = start_date_str
+                member.subscription_id = new_subscription_id
+                member.plan_name = plan_name
+                if combined_notes:
+                    member.note = combined_notes
+            else:
+                member = Member(
+                    branch_id=branch_id,
+                    member_code=str(random.randint(100, 9999)),
+                    barcode="".join(str(random.randint(0, 9)) for _ in range(9)),
+                    full_name=name,
+                    email=email,
+                    phone=phone,
+                    join_date=start_date_str,
+                    subscription_id=new_subscription_id,
+                    plan_name=plan_name,
+                    status="active",
+                    note=combined_notes,
+                )
+                db.add(member)
+                db.flush()
+
+            new_req.member_id = member.id
+            db.add(
+                Payment(
+                    branch_id=branch_id,
+                    member_id=member.id,
+                    member_name=member.full_name,
+                    subscription_id=new_subscription_id,
+                    amount=paid_amount,
+                    date=date.today().strftime("%Y-%m-%d"),
+                    method=payment_method,
+                    status="paid",
+                )
+            )
         db.commit()
         db.refresh(new_req)
 
@@ -355,7 +405,7 @@ def create_subscription_request(
         return JSONResponse(
             status_code=201,
             content={
-                "message": "Request created successfully",
+                "message": "Demo payment completed successfully" if payload.simulate_payment else "Request created successfully",
                 "request_id": req_id_val,
                 "request_for_admin": {
                     "request_id": req_id_val,
