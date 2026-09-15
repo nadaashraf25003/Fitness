@@ -66,8 +66,6 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
         phone: formData.phone,
         planId: selectedPlan.id,
         planName: selectedPlan.name,
-        paidAmount: selectedPlan.price,
-        paymentMethod: 'Cash — Pay at Reception',
         requestedStartDate: formData.requestedStartDate,
         notes: formData.notes,
       });
@@ -133,7 +131,7 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
             </div>
             <div className="flex justify-between">
               <span>Amount Due:</span>
-              <span className="text-brand-primary font-bold">${submittedRequest.paidAmount} USD</span>
+              <span className="text-brand-primary font-bold">${selectedPlan?.price} USD</span>
             </div>
           </div>
 
