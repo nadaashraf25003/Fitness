@@ -6,7 +6,7 @@ import { memberService } from '../../services/memberService';
 import { subscriptionService } from '../../services/subscriptionService';
 import { Plan } from '../../types/subscription.types';
 import { isValidEmail, isValidPhone } from '../../utils/validationUtils';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle2, RotateCw } from 'lucide-react';
 
 interface AddMemberFormProps {
   onSuccess: () => void;
@@ -18,6 +18,12 @@ export const AddMemberForm: React.FC<AddMemberFormProps> = ({ onSuccess, onCance
   const [loadingPlans, setLoadingPlans] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [isCheckingEmail, setIsCheckingEmail] = useState<boolean>(false);
+  const [emailCheckResult, setEmailCheckResult] = useState<{
+    checked: boolean;
+    exists: boolean;
+    message: string;
+  } | null>(null);
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -57,6 +63,47 @@ export const AddMemberForm: React.FC<AddMemberFormProps> = ({ onSuccess, onCance
     loadPlans();
   }, []);
 
+  // Debounced email existence check
+  useEffect(() => {
+    const rawEmail = formData.email.trim();
+    if (!rawEmail || !isValidEmail(rawEmail)) {
+      setEmailCheckResult(null);
+      setIsCheckingEmail(false);
+      return;
+    }
+
+    let isMounted = true;
+    setIsCheckingEmail(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await subscriptionService.checkEmail(rawEmail);
+        if (!isMounted) return;
+
+        setEmailCheckResult({
+          checked: true,
+          exists: res.exists,
+          message: res.message,
+        });
+
+        if (res.exists) {
+          setFormError(res.message || 'A member with this email already exists.');
+        } else {
+          setFormError((prev) => (prev?.includes('already exists') ? null : prev));
+        }
+      } catch (err) {
+        console.warn('Error checking email in AddMemberForm:', err);
+      } finally {
+        if (isMounted) setIsCheckingEmail(false);
+      }
+    }, 400);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [formData.email]);
+
   const handlePlanChange = (planName: string) => {
     const selected = plans.find((p) => p.name === planName);
     setFormData((prev) => ({
@@ -83,8 +130,16 @@ export const AddMemberForm: React.FC<AddMemberFormProps> = ({ onSuccess, onCance
       return;
     }
 
+    // Check email existence before create
     setIsSubmitting(true);
     try {
+      const emailRes = await subscriptionService.checkEmail(formData.email.trim());
+      if (emailRes.exists) {
+        setFormError(emailRes.message || 'A member with this email already exists.');
+        setIsSubmitting(false);
+        return;
+      }
+
       await memberService.create({
         fullName: formData.fullName.trim(),
         email: formData.email.trim(),
@@ -134,8 +189,25 @@ export const AddMemberForm: React.FC<AddMemberFormProps> = ({ onSuccess, onCance
           type="email"
           placeholder="michael.t@example.com"
           value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          onChange={(e) => {
+            setFormData({ ...formData, email: e.target.value });
+            setEmailCheckResult(null);
+          }}
           required
+          rightIcon={
+            isCheckingEmail ? (
+              <RotateCw className="w-4 h-4 text-brand-primary animate-spin" />
+            ) : emailCheckResult?.checked && !emailCheckResult.exists ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            ) : emailCheckResult?.checked && emailCheckResult.exists ? (
+              <AlertCircle className="w-4 h-4 text-rose-400" />
+            ) : null
+          }
+          helperText={
+            emailCheckResult?.checked && !emailCheckResult.exists
+              ? '✓ Email address is available'
+              : undefined
+          }
         />
 
         <FormInput

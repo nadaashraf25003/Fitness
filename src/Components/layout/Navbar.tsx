@@ -38,11 +38,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
 
         {/* User Pill Link to Profile */}
         <div className="flex items-center gap-3 pl-2 sm:pl-4 border-l border-border-subtle">
-          <Link
+          {/* <Link
             to={PATHS.PROFILE}
             className="flex items-center gap-3 p-1.5 -m-1.5 rounded-xl hover:bg-surface-elevated transition-colors cursor-pointer group"
             title="View My Profile"
-          >
+          > */}
             <Avatar
               src={user?.avatarUrl}
               name={user?.name || 'Staff User'}
@@ -57,7 +57,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
                 {isAdmin ? 'Admin' : 'Staff'}
               </div>
             </div>
-          </Link>
+          {/* </Link> */}
           
           <Button
             variant="ghost"

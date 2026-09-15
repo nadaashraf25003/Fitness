@@ -25,6 +25,8 @@ import {
   Send,
   Zap,
   Info,
+  AlertCircle,
+  Search,
 } from 'lucide-react';
 import { isValidEmail, isValidPhone } from '../../utils/validationUtils';
 
@@ -32,6 +34,7 @@ interface SubscriptionRequestModalProps {
   isOpen: boolean;
   onClose: () => void;
   selectedPlan: Plan | null;
+  onOpenCheckStatus?: (email?: string) => void;
 }
 
 type PaymentMethodType = 'Visa' | 'Cash';
@@ -48,6 +51,7 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
   isOpen,
   onClose,
   selectedPlan,
+  onOpenCheckStatus,
 }) => {
   // Wizard steps: 'details' -> 'payment' -> 'otp' -> 'processing' -> 'success'
   const [currentStep, setCurrentStep] = useState<'details' | 'payment' | 'otp' | 'processing' | 'success'>('details');
@@ -60,6 +64,17 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
     paymentMethod: 'Visa' as PaymentMethodType,
     notes: '',
   });
+
+  // Email existence verification states
+  const [isCheckingEmail, setIsCheckingEmail] = useState<boolean>(false);
+  const [emailCheckedResult, setEmailCheckedResult] = useState<{
+    checked: boolean;
+    exists: boolean;
+    reason?: 'member' | 'request' | 'user' | 'none';
+    message: string;
+    member?: any;
+    request?: any;
+  } | null>(null);
 
   // Visa card states
   const [cardData, setCardData] = useState<CardInfo>({
@@ -98,6 +113,57 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
     return () => clearInterval(interval);
   }, [currentStep, otpTimer]);
 
+  // Debounced email availability verification effect
+  useEffect(() => {
+    const rawEmail = formData.email.trim();
+    if (!rawEmail || !isValidEmail(rawEmail)) {
+      setEmailCheckedResult(null);
+      setIsCheckingEmail(false);
+      return;
+    }
+
+    let isMounted = true;
+    setIsCheckingEmail(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await subscriptionService.checkEmail(rawEmail);
+        if (!isMounted) return;
+
+        setEmailCheckedResult({
+          checked: true,
+          exists: res.exists,
+          reason: res.reason,
+          message: res.message,
+          member: res.member,
+          request: res.request,
+        });
+
+        if (res.exists) {
+          setErrors((prev) => ({
+            ...prev,
+            email: res.message || 'This email is already registered in our system.',
+          }));
+        } else {
+          setErrors((prev) => {
+            const next = { ...prev };
+            delete next.email;
+            return next;
+          });
+        }
+      } catch (e) {
+        console.warn('Error verifying email existence:', e);
+      } finally {
+        if (isMounted) setIsCheckingEmail(false);
+      }
+    }, 400);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [formData.email]);
+
   // Detect card network brand
   const getCardBrand = (numberStr: string) => {
     const clean = numberStr.replace(/\s/g, '');
@@ -129,6 +195,9 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
+    }
+    if (name === 'email') {
+      setEmailCheckedResult(null);
     }
   };
 
@@ -178,10 +247,36 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
     return Object.keys(errs).length === 0;
   };
 
-  // Move from Step 1 to Step 2
-  const handleProceedToPayment = (e: React.FormEvent) => {
+  // Move from Step 1 to Step 2 (Verifies email availability before proceeding)
+  const handleProceedToPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateStep1()) return;
+
+    // Check if email already exists
+    setIsCheckingEmail(true);
+    try {
+      const checkRes = await subscriptionService.checkEmail(formData.email.trim());
+      setIsCheckingEmail(false);
+
+      if (checkRes.exists) {
+        setEmailCheckedResult({
+          checked: true,
+          exists: true,
+          reason: checkRes.reason,
+          message: checkRes.message,
+          member: checkRes.member,
+          request: checkRes.request,
+        });
+        setErrors((prev) => ({
+          ...prev,
+          email: checkRes.message || 'This email address is already registered in the gym system.',
+        }));
+        return;
+      }
+    } catch (err) {
+      setIsCheckingEmail(false);
+    }
+
     if (!cardData.cardHolder) {
       setCardData((prev) => ({ ...prev, cardHolder: formData.fullName.toUpperCase() }));
     }
@@ -320,6 +415,8 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
   const handleResetAndClose = () => {
     setCurrentStep('details');
     setSubmittedRequest(null);
+    setEmailCheckedResult(null);
+    setIsCheckingEmail(false);
     setFormData({
       fullName: '',
       email: '',
@@ -354,6 +451,8 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
           ? 'Secure Checkout & Payment Gateway'
           : currentStep === 'processing'
           ? 'Authorizing Transaction...'
+          : selectedPlan?.isPopular
+          ? `Start Free Trial — ${selectedPlan?.name}`
           : `Subscribe to GEM — ${selectedPlan?.name || 'Plan'}`
       }
       subtitle={
@@ -365,6 +464,8 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
           ? 'Complete your billing information to activate your gym enrollment.'
           : currentStep === 'processing'
           ? 'Communicating with banking network over 256-bit encrypted SSL...'
+          : selectedPlan?.isPopular
+          ? 'Fill in your details below to activate your instant free trial pass.'
           : 'Fill in your details below to join GEM Fitness.'
       }
       maxWidth={currentStep === 'success' ? 'lg' : 'md'}
@@ -741,6 +842,20 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
               onChange={handleInputChange}
               error={errors.email}
               leftIcon={<Mail className="w-4 h-4" />}
+              rightIcon={
+                isCheckingEmail ? (
+                  <RotateCw className="w-4 h-4 text-brand-primary animate-spin" />
+                ) : emailCheckedResult?.checked && !emailCheckedResult.exists ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                ) : emailCheckedResult?.checked && emailCheckedResult.exists ? (
+                  <AlertCircle className="w-4 h-4 text-rose-400" />
+                ) : null
+              }
+              helperText={
+                !errors.email && emailCheckedResult?.checked && !emailCheckedResult.exists
+                  ? '✓ Email is available for your trial pass'
+                  : undefined
+              }
             />
 
             <FormInput
@@ -753,6 +868,38 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
               leftIcon={<Phone className="w-4 h-4" />}
             />
           </div>
+
+          {/* Account Already Exists Callout Alert */}
+          {emailCheckedResult?.exists && (
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-2.5 animate-in fade-in">
+              <div className="flex items-start gap-2.5 text-amber-400">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <div>
+                  <strong className="font-semibold block text-text-main">
+                    Account Already Exists
+                  </strong>
+                  <p className="text-text-muted mt-0.5 leading-relaxed">
+                    {emailCheckedResult.message}
+                  </p>
+                </div>
+              </div>
+
+              {onOpenCheckStatus && (
+                <div className="flex items-center gap-2 pt-1 border-t border-amber-500/20">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onOpenCheckStatus(formData.email);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold transition-all cursor-pointer text-xs"
+                  >
+                    <Search className="w-3.5 h-3.5" />
+                    <span>Track Application Status / Keycard →</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           <FormInput
             label="Preferred Start Date"
@@ -784,9 +931,20 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
               variant="primary"
               size="lg"
               className="w-full font-bold shadow-lg shadow-brand-primary/20"
-              rightIcon={<ArrowRight className="w-4 h-4" />}
+              rightIcon={
+                isCheckingEmail ? (
+                  <RotateCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ArrowRight className="w-4 h-4" />
+                )
+              }
+              disabled={isCheckingEmail}
             >
-              Continue to Payment (${selectedPlan?.price})
+              {isCheckingEmail
+                ? 'Verifying Email Availability...'
+                : selectedPlan?.isPopular
+                ? `Start Free Trial (${selectedPlan?.name})`
+                : `Continue to Payment ($${selectedPlan?.price})`}
             </Button>
           </div>
         </form>

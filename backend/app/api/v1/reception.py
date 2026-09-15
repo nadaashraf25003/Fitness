@@ -1,6 +1,6 @@
 from datetime import datetime, date, timedelta, timezone
 from typing import Optional, Union, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -20,6 +20,90 @@ from app.schemas.reception import (
 )
 
 router = APIRouter(tags=["Reception Module"])
+
+
+# -------------------------------------------------------------
+# 0. Check Email Availability (Public & Registration)
+# -------------------------------------------------------------
+@router.get("/check-email")
+@router.post("/check-email")
+def check_email_availability(
+    email: Optional[str] = Query(None, description="Email to check for existence"),
+    payload: Optional[Dict[str, Any]] = None,
+    db: Session = Depends(get_db),
+):
+    """Check whether an email already exists in members, subscription requests, or user accounts."""
+    target_email = email
+    if not target_email and payload:
+        target_email = payload.get("email")
+
+    if not target_email or not str(target_email).strip():
+        return JSONResponse(
+            status_code=400,
+            content={"exists": False, "reason": "none", "message": "Email address is required"},
+        )
+
+    clean_email = str(target_email).strip().lower()
+
+    # 1. Check existing Member record
+    existing_member = db.query(Member).filter(Member.email.ilike(clean_email)).first()
+    if existing_member:
+        sub_dict, is_active, is_expired = get_member_subscription_details(existing_member)
+        mem_code = existing_member.member_code if existing_member.member_code else str(existing_member.id).replace("mem-", "")
+        return {
+            "exists": True,
+            "reason": "member",
+            "message": f"A registered member account with '{clean_email}' already exists.",
+            "member": {
+                "id": existing_member.id,
+                "member_code": mem_code,
+                "name": existing_member.full_name,
+                "status": existing_member.status,
+                "is_active": is_active,
+                "plan_name": existing_member.plan_name,
+            },
+        }
+
+    # 2. Check pending / approved Subscription Request
+    existing_req = (
+        db.query(SubscriptionRequest)
+        .filter(
+            SubscriptionRequest.email.ilike(clean_email),
+            SubscriptionRequest.status.in_(["pending", "approved"]),
+        )
+        .first()
+    )
+    if existing_req:
+        req_id_clean = existing_req.id.replace("req-", "")
+        return {
+            "exists": True,
+            "reason": "request",
+            "message": f"A subscription application for '{clean_email}' is currently {existing_req.status}.",
+            "request": {
+                "id": existing_req.id,
+                "request_id": req_id_clean,
+                "name": existing_req.full_name,
+                "status": existing_req.status,
+                "plan_name": existing_req.plan_name,
+                "requested_start_date": existing_req.requested_start_date,
+            },
+        }
+
+    # 3. Check portal user accounts (admin/staff)
+    existing_user = db.query(User).filter(User.email.ilike(clean_email)).first()
+    if existing_user:
+        return {
+            "exists": True,
+            "reason": "user",
+            "message": f"This email is registered as an administrative staff portal account.",
+        }
+
+    # 4. Email is free and available
+    return {
+        "exists": False,
+        "reason": "none",
+        "message": "Email is available for registration.",
+    }
 
 
 def get_member_subscription_details(member: Member) -> tuple[Optional[Dict[str, Any]], bool, bool]:
@@ -313,6 +397,29 @@ def create_subscription_request(
             return JSONResponse(status_code=400, content={"message": "name is required"})
         if not phone:
             return JSONResponse(status_code=400, content={"message": "phone is required"})
+
+        # Guard: Check for duplicate email in existing members or pending requests
+        if email and not email.endswith("@gym.com"):
+            clean_email = email.strip().lower()
+            existing_member = db.query(Member).filter(Member.email.ilike(clean_email)).first()
+            if existing_member:
+                return JSONResponse(
+                    status_code=400,
+                    content={"message": f"A member with email '{email}' already exists. Please track status or login."}
+                )
+            existing_req = (
+                db.query(SubscriptionRequest)
+                .filter(
+                    SubscriptionRequest.email.ilike(clean_email),
+                    SubscriptionRequest.status == "pending",
+                )
+                .first()
+            )
+            if existing_req:
+                return JSONResponse(
+                    status_code=409,
+                    content={"message": f"A pending application for '{email}' is already in review."}
+                )
 
         if not payload.subscription or not isinstance(payload.subscription, dict):
             return JSONResponse(status_code=400, content={"message": "Subscription data is required"})

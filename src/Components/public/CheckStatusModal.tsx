@@ -22,23 +22,31 @@ interface CheckStatusModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectMember?: (member: SubscriptionRequest) => void;
+  initialQuery?: string;
 }
 
 export const CheckStatusModal: React.FC<CheckStatusModalProps> = ({
   isOpen,
   onClose,
   onSelectMember,
+  initialQuery,
 }) => {
   const navigate = useNavigate();
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(initialQuery || '');
   const [searched, setSearched] = useState(false);
   const [foundRequest, setFoundRequest] = useState<SubscriptionRequest | null>(null);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query.trim()) return;
+  React.useEffect(() => {
+    if (isOpen && initialQuery) {
+      setQuery(initialQuery);
+      executeSearch(initialQuery);
+    }
+  }, [isOpen, initialQuery]);
 
-    const cleanQuery = query.toLowerCase().trim();
+  const executeSearch = (searchQuery: string) => {
+    if (!searchQuery.trim()) return;
+
+    const cleanQuery = searchQuery.toLowerCase().trim();
     const queryNumOnly = cleanQuery.replace(/[^0-9]/g, '');
 
     // 1. Search database members first
@@ -106,6 +114,11 @@ export const CheckStatusModal: React.FC<CheckStatusModalProps> = ({
       setFoundRequest(null);
     }
     setSearched(true);
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    executeSearch(query);
   };
 
   const handleOpenProfile = (req: SubscriptionRequest) => {

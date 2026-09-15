@@ -444,6 +444,73 @@ export const subscriptionService = {
 
     return requests[index];
   },
+
+  /**
+   * Check if an email already exists in backend database or local storage cache
+   */
+  async checkEmail(email: string): Promise<{
+    exists: boolean;
+    reason?: 'member' | 'request' | 'user' | 'none';
+    message: string;
+    member?: any;
+    request?: any;
+  }> {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    if (!cleanEmail) {
+      return { exists: false, reason: 'none', message: 'Email address is required' };
+    }
+
+    try {
+      const response = await apiClient.get('/fitness/check-email', {
+        params: { email: cleanEmail },
+      });
+      if (response.data && typeof response.data.exists === 'boolean') {
+        return response.data;
+      }
+    } catch (error: any) {
+      if (error?.response?.data && typeof error.response.data.exists === 'boolean') {
+        return error.response.data;
+      }
+      console.warn('Backend API /fitness/check-email unavailable, checking local storage cache:', error);
+    }
+
+    // Fallback: Check local storage members
+    const localMembers = getStoredItem<any[]>('gym_members', []);
+    const foundMember = localMembers.find(
+      (m) => m.email && m.email.trim().toLowerCase() === cleanEmail
+    );
+    if (foundMember) {
+      return {
+        exists: true,
+        reason: 'member',
+        message: `A registered member account with '${cleanEmail}' already exists.`,
+        member: foundMember,
+      };
+    }
+
+    // Fallback: Check local storage requests
+    const localRequests = getStoredItem<SubscriptionRequest[]>(REQUESTS_KEY, initialRequests);
+    const foundReq = localRequests.find(
+      (r) =>
+        r.email &&
+        r.email.trim().toLowerCase() === cleanEmail &&
+        (r.status === 'pending' || r.status === 'approved')
+    );
+    if (foundReq) {
+      return {
+        exists: true,
+        reason: 'request',
+        message: `A subscription application for '${cleanEmail}' is currently ${foundReq.status}.`,
+        request: foundReq,
+      };
+    }
+
+    return {
+      exists: false,
+      reason: 'none',
+      message: 'Email is available for registration.',
+    };
+  },
 };
 
 export default subscriptionService;

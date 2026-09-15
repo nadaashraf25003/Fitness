@@ -22,6 +22,7 @@ export const LandingPage: React.FC = () => {
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [statusSearchEmail, setStatusSearchEmail] = useState<string>('');
   const [verifiedMember, setVerifiedMember] = useState<SubscriptionRequest | null>(() => {
     try {
       const stored = localStorage.getItem(VERIFIED_STORAGE_KEY);
@@ -34,6 +35,14 @@ export const LandingPage: React.FC = () => {
   const handleSelectPlan = (plan: Plan) => {
     setSelectedPlan(plan);
     setIsModalOpen(true);
+  };
+
+  const handleOpenCheckStatusFromTrial = (email?: string) => {
+    setIsModalOpen(false);
+    if (email) {
+      setStatusSearchEmail(email);
+    }
+    setIsStatusModalOpen(true);
   };
 
   const handleMemberVerified = (member: SubscriptionRequest) => {
@@ -109,7 +118,10 @@ export const LandingPage: React.FC = () => {
             ) : (
               /* Standard Check Status Button */
               <button
-                onClick={() => setIsStatusModalOpen(true)}
+                onClick={() => {
+                  setStatusSearchEmail('');
+                  setIsStatusModalOpen(true);
+                }}
                 className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-card border border-border-subtle hover:border-brand-primary text-xs font-medium text-text-muted hover:text-brand-primary transition-colors cursor-pointer"
               >
                 <Search className="w-3.5 h-3.5" />
@@ -143,13 +155,18 @@ export const LandingPage: React.FC = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         selectedPlan={selectedPlan}
+        onOpenCheckStatus={handleOpenCheckStatusFromTrial}
       />
 
       {/* Check Status Tracking Modal */}
       <CheckStatusModal
         isOpen={isStatusModalOpen}
-        onClose={() => setIsStatusModalOpen(false)}
+        onClose={() => {
+          setIsStatusModalOpen(false);
+          setStatusSearchEmail('');
+        }}
         onSelectMember={handleMemberVerified}
+        initialQuery={statusSearchEmail}
       />
 
       {/* Rich Footer with Copyright */}
