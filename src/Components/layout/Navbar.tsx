@@ -1,11 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../Hooks/useAuth';
+import { useBranch } from '../../Hooks/useBranch';
 import { Avatar } from '../ui/Avatar';
 import { Button } from '../ui/Button';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { PATHS } from '../../Routing/routePaths';
-import { Menu, LogOut } from 'lucide-react';
+import { Menu, LogOut, Building2, MapPin } from 'lucide-react';
 
 interface NavbarProps {
   onToggleSidebar: () => void;
@@ -13,6 +14,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
   const { user, logout, isAdmin } = useAuth();
+  const { selectedBranch, setSelectedBranch } = useBranch();
 
   return (
     <header className="h-16 bg-surface border-b border-border-subtle flex items-center justify-between px-4 sm:px-6 sticky top-0 z-20">
@@ -33,6 +35,22 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-4">
+        {/* Global Branch Selector */}
+        <div className="relative flex items-center">
+          <select
+            value={selectedBranch}
+            onChange={(e) => setSelectedBranch(Number(e.target.value))}
+            aria-label="Active Gym Branch"
+            className="appearance-none bg-surface-card border border-border-subtle hover:border-brand-primary/60 text-text-main text-xs font-semibold py-1.5 pl-3 pr-8 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-primary/30 transition-all cursor-pointer shadow-sm"
+          >
+            <option value={1}>Branch 1: Main (Khanqah)</option>
+            <option value={2}>Branch 2: Downtown (City Center)</option>
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-brand-primary">
+            <Building2 className="w-3.5 h-3.5" />
+          </div>
+        </div>
+
         {/* Theme Toggle Button */}
         <ThemeToggle size="sm" />
 

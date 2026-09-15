@@ -10,6 +10,7 @@ interface RecordPaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (payment: Omit<PaymentRecord, 'id'>) => Promise<PaymentRecord | void>;
+  branchId?: number;
 }
 
 interface PaymentFormValues {
@@ -20,25 +21,27 @@ interface PaymentFormValues {
   date: string;
   method: PaymentRecord['method'];
   status: PaymentRecord['status'];
+  branchId: number;
 }
 
 const todayStr = () => new Date().toISOString().split('T')[0];
-
-const initialValues: PaymentFormValues = {
-  memberId: '',
-  memberName: '',
-  subscriptionId: '',
-  amount: '',
-  date: todayStr(),
-  method: 'cash',
-  status: 'paid',
-};
 
 export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
+  branchId = 1,
 }) => {
+  const initialValues: PaymentFormValues = {
+    memberId: '',
+    memberName: '',
+    subscriptionId: '',
+    amount: '',
+    date: todayStr(),
+    method: 'cash',
+    status: 'paid',
+    branchId: branchId || 1,
+  };
   const { values, errors, isSubmitting, handleChange, handleSubmit, resetForm } =
     useForm<PaymentFormValues>({
       initialValues,
@@ -60,6 +63,7 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
           date: v.date,
           method: v.method,
           status: v.status,
+          branchId: Number(v.branchId) || branchId || 1,
         });
         resetForm();
         onClose();
@@ -80,14 +84,26 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
       maxWidth="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <FormInput
-          label="Member ID"
-          name="memberId"
-          value={values.memberId}
-          onChange={handleChange}
-          error={errors.memberId}
-          placeholder="mem-101"
-        />
+        <div className="grid grid-cols-2 gap-4">
+          <FormInput
+            label="Member ID"
+            name="memberId"
+            value={values.memberId}
+            onChange={handleChange}
+            error={errors.memberId}
+            placeholder="mem-101"
+          />
+          <Select
+            label="Branch Location"
+            name="branchId"
+            value={String(values.branchId)}
+            onChange={handleChange}
+            options={[
+              { value: '1', label: 'Branch 1 - Main (Khanqah)' },
+              { value: '2', label: 'Branch 2 - Downtown (City Center)' },
+            ]}
+          />
+        </div>
         <FormInput
           label="Member Name"
           name="memberName"

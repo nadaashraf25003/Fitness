@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { CheckInEntry, AttendanceStats } from '../types/attendance.types';
 import { attendanceService } from '../services/attendanceService';
 
-export function useAttendance() {
+export function useAttendance(branchId: number = 1) {
   const [entries, setEntries] = useState<CheckInEntry[]>([]);
   const [stats, setStats] = useState<AttendanceStats | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -15,8 +15,8 @@ export function useAttendance() {
       setLoading(true);
       setError(null);
       const [todayEntries, currentStats] = await Promise.all([
-        attendanceService.getToday(),
-        attendanceService.getStats().catch(() => null),
+        attendanceService.getToday(branchId),
+        attendanceService.getStats(branchId).catch(() => null),
       ]);
       setEntries(todayEntries);
       if (currentStats) {
@@ -35,7 +35,7 @@ export function useAttendance() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [branchId]);
 
   useEffect(() => {
     fetchAttendanceData();
@@ -46,7 +46,7 @@ export function useAttendance() {
     setError(null);
     setSuccessMessage(null);
     try {
-      const newEntry = await attendanceService.checkIn(memberId, trainerName);
+      const newEntry = await attendanceService.checkIn(memberId, trainerName, branchId);
       setEntries((prev) => [newEntry, ...prev.filter((e) => e.id !== newEntry.id)]);
       setStats((prev) =>
         prev

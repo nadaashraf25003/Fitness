@@ -11,9 +11,10 @@ import { AlertCircle, CheckCircle2, RotateCw } from 'lucide-react';
 interface AddMemberFormProps {
   onSuccess: () => void;
   onCancel: () => void;
+  initialBranchId?: number;
 }
 
-export const AddMemberForm: React.FC<AddMemberFormProps> = ({ onSuccess, onCancel }) => {
+export const AddMemberForm: React.FC<AddMemberFormProps> = ({ onSuccess, onCancel, initialBranchId = 1 }) => {
   const [plans, setPlans] = useState<Plan[]>(() => subscriptionService.getPlans());
   const [loadingPlans, setLoadingPlans] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -35,9 +36,17 @@ export const AddMemberForm: React.FC<AddMemberFormProps> = ({ onSuccess, onCance
     subscriptionId: 'sub-pro',
     planName: 'Pro 3-Month',
     status: 'active' as const,
+    branchId: initialBranchId,
     photoUrl: '',
     note: '',
   });
+
+  useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      branchId: initialBranchId,
+    }));
+  }, [initialBranchId]);
 
   useEffect(() => {
     async function loadPlans() {
@@ -150,6 +159,7 @@ export const AddMemberForm: React.FC<AddMemberFormProps> = ({ onSuccess, onCance
         subscriptionId: formData.subscriptionId,
         planName: formData.planName,
         status: formData.status,
+        branchId: Number(formData.branchId) || 1,
         photoUrl: formData.photoUrl.trim() || undefined,
         note: formData.note.trim() || undefined,
       });
@@ -175,13 +185,25 @@ export const AddMemberForm: React.FC<AddMemberFormProps> = ({ onSuccess, onCance
         </div>
       )}
 
-      <FormInput
-        label="Full Name"
-        placeholder="e.g. Michael Thorne"
-        value={formData.fullName}
-        onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-        required
-      />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <FormInput
+          label="Full Name"
+          placeholder="e.g. Michael Thorne"
+          value={formData.fullName}
+          onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+          required
+        />
+
+        <Select
+          label="Registered Gym Branch"
+          value={String(formData.branchId)}
+          onChange={(e) => setFormData({ ...formData, branchId: Number(e.target.value) })}
+          options={[
+            { value: '1', label: 'Branch 1 - Main Branch (Khanqah)' },
+            { value: '2', label: 'Branch 2 - Downtown Branch (City Center)' },
+          ]}
+        />
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormInput

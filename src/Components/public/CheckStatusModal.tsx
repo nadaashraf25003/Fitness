@@ -43,13 +43,63 @@ export const CheckStatusModal: React.FC<CheckStatusModalProps> = ({
     }
   }, [isOpen, initialQuery]);
 
-  const executeSearch = (searchQuery: string) => {
+  const executeSearch = async (searchQuery: string) => {
     if (!searchQuery.trim()) return;
 
     const cleanQuery = searchQuery.toLowerCase().trim();
     const queryNumOnly = cleanQuery.replace(/[^0-9]/g, '');
 
-    // 1. Search database members first
+    // 1. Search backend email check if it's an email
+    if (cleanQuery.includes('@')) {
+      try {
+        const checkRes = await subscriptionService.checkEmail(cleanQuery);
+        if (checkRes.exists && checkRes.request) {
+          const r = checkRes.request;
+          setFoundRequest({
+            id: r.id || `req-${r.request_id || ''}`,
+            fullName: r.full_name || r.fullName || r.member_name || '',
+            email: r.email,
+            phone: r.phone,
+            planId: r.plan_id || r.planId || 'plan-pro',
+            planName: r.plan_name || r.planName || 'Pro 3-Month',
+            requestedStartDate: r.requested_start_date || r.requestedStartDate || new Date().toISOString().split('T')[0],
+            status: (r.status || 'pending') as any,
+            notes: r.notes,
+            createdAt: r.created_at || r.createdAt || new Date().toISOString(),
+            memberCode: r.member_code || r.memberCode,
+            duration: r.duration || 1,
+            paidAmount: r.paid_amount || r.paidAmount || 0,
+            paymentMethod: r.payment_method || r.paymentMethod || 'Visa',
+          });
+          setSearched(true);
+          return;
+        } else if (checkRes.exists && checkRes.member) {
+          const m = checkRes.member;
+          setFoundRequest({
+            id: m.id || `mem-${m.member_code || ''}`,
+            fullName: m.full_name || m.fullName || '',
+            email: m.email,
+            phone: m.phone,
+            planId: m.subscription_id || m.subscriptionId || 'plan-pro',
+            planName: m.plan_name || m.planName || 'Pro 3-Month',
+            requestedStartDate: m.join_date || m.joinDate || new Date().toISOString().split('T')[0],
+            status: m.status === 'expired' ? 'rejected' : 'approved',
+            notes: m.note,
+            createdAt: m.join_date || m.joinDate,
+            memberCode: m.member_code || m.memberCode,
+            duration: 3,
+            paidAmount: 79.99,
+            paymentMethod: 'Visa',
+          });
+          setSearched(true);
+          return;
+        }
+      } catch (e) {
+        console.warn('Backend email check error:', e);
+      }
+    }
+
+    // 2. Search database members
     const allMembers = memberService.getAll();
     const matchedMember = allMembers.find((m) => {
       const idExactMatch = m.id.toLowerCase() === cleanQuery;
@@ -82,37 +132,28 @@ export const CheckStatusModal: React.FC<CheckStatusModalProps> = ({
       return;
     }
 
-    // 2. Search subscription requests
-    const allRequests = subscriptionService.getRequests();
-    const match = allRequests.find((r: any) => {
-      const emailMatch = r.email?.toLowerCase() === cleanQuery;
-      const idExactMatch = r.id?.toLowerCase() === cleanQuery;
-      const idCleanMatch = r.id?.replace('req-', '').toLowerCase() === cleanQuery.replace('req-', '');
-      const phoneMatch = queryNumOnly.length >= 7 && r.phone?.replace(/[^0-9]/g, '') === queryNumOnly;
-      const nameMatch = r.fullName?.toLowerCase() === cleanQuery;
-      return emailMatch || idExactMatch || idCleanMatch || phoneMatch || nameMatch;
-    });
+    // 3. Search backend subscription requests
+    try {
+      const backendRequests = await subscriptionService.fetchRequests();
+      const match = backendRequests.find((r: any) => {
+        const emailMatch = r.email?.toLowerCase() === cleanQuery;
+        const idExactMatch = r.id?.toLowerCase() === cleanQuery;
+        const idCleanMatch = r.id?.replace('req-', '').toLowerCase() === cleanQuery.replace('req-', '');
+        const phoneMatch = queryNumOnly.length >= 7 && r.phone?.replace(/[^0-9]/g, '') === queryNumOnly;
+        const nameMatch = r.fullName?.toLowerCase() === cleanQuery;
+        return emailMatch || idExactMatch || idCleanMatch || phoneMatch || nameMatch;
+      });
 
-    if (match) {
-      // Check if this request has a corresponding DB member
-      const correspondingDb = allMembers.find(
-        (m) =>
-          m.email.toLowerCase() === match.email.toLowerCase() ||
-          (m.phone && match.phone && m.phone.replace(/[^0-9]/g, '') === match.phone.replace(/[^0-9]/g, ''))
-      );
-
-      setFoundRequest(
-        correspondingDb
-          ? {
-              ...match,
-              id: correspondingDb.id, // "mem-498a5bf3"
-              status: 'approved',
-            }
-          : match
-      );
-    } else {
-      setFoundRequest(null);
+      if (match) {
+        setFoundRequest(match);
+        setSearched(true);
+        return;
+      }
+    } catch (err) {
+      console.warn('Backend requests search error:', err);
     }
+
+    setFoundRequest(null);
     setSearched(true);
   };
 
@@ -123,7 +164,7 @@ export const CheckStatusModal: React.FC<CheckStatusModalProps> = ({
 
   const handleOpenProfile = (req: SubscriptionRequest) => {
     try {
-      localStorage.setItem('gym_verified_public_member', JSON.stringify(req));
+      sessionStorage.setItem('gym_verified_public_member', JSON.stringify(req));
     } catch (e) {
       console.warn('Error saving verified member:', e);
     }

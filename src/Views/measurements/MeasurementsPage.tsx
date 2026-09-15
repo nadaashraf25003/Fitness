@@ -11,10 +11,12 @@ import {
   Trash2,
   Calendar,
   Info,
+  Building2,
 } from 'lucide-react';
 import { StatCard } from '../../Components/ui/StatCard';
 import { useMeasurements } from '../../Hooks/useMeasurements';
 import { useAuth } from '../../Hooks/useAuth';
+import { useBranch } from '../../Hooks/useBranch';
 import { Spinner } from '../../Components/ui/Spinner';
 import { LogMeasurementModal } from './LogMeasurementModal';
 import { memberService } from '../../services/memberService';
@@ -23,25 +25,29 @@ import { Member } from '../../types/member.types';
 
 export const MeasurementsPage: React.FC = () => {
   const { user } = useAuth();
+  const { selectedBranch, setSelectedBranch, branchName, branchLocation, branches } = useBranch();
   const [selectedMemberId, setSelectedMemberId] = useState<string>(user?.id || 'mem-101');
   const [members, setMembers] = useState<Member[]>([]);
   const [showModal, setShowModal] = useState(false);
 
-  // Fetch available gym members for selector
+  // Fetch available gym members for selector filtered by active branch
   useEffect(() => {
     const loadMembers = async () => {
       try {
-        const list = await memberService.getAll();
+        const list = await memberService.fetchMembers({ branch_id: selectedBranch });
         setMembers(list);
-        if (list.length > 0 && !selectedMemberId) {
-          setSelectedMemberId(list[0].id);
+        if (list.length > 0) {
+          const currentExists = list.some((m) => m.id === selectedMemberId);
+          if (!currentExists) {
+            setSelectedMemberId(list[0].id);
+          }
         }
       } catch (err) {
         console.warn('Failed to load members for selector:', err);
       }
     };
     loadMembers();
-  }, []);
+  }, [selectedBranch]);
 
   const selectedMember = members.find((m) => m.id === selectedMemberId);
 
@@ -116,9 +122,28 @@ export const MeasurementsPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Branch Selector Pill */}
+          <div className="flex items-center gap-1 bg-surface-card border border-border-subtle p-1 rounded-xl">
+            {branches.map((b) => (
+              <button
+                key={b.id}
+                type="button"
+                onClick={() => setSelectedBranch(b.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  selectedBranch === b.id
+                    ? 'bg-brand-primary text-black shadow-sm'
+                    : 'text-text-muted hover:text-text-main'
+                }`}
+              >
+                <Building2 className="w-3.5 h-3.5" />
+                <span>Branch {b.id}: {b.location}</span>
+              </button>
+            ))}
+          </div>
+
           {/* Member Switcher Dropdown */}
-          {members.length > 0 && (
+          {members.length > 0 ? (
             <div className="flex items-center gap-2 bg-surface-card border border-border-subtle rounded-xl px-3 py-1.5 text-xs">
               <User className="w-4 h-4 text-brand-primary" />
               <span className="text-text-muted font-medium hidden sm:inline">Member:</span>
@@ -133,6 +158,10 @@ export const MeasurementsPage: React.FC = () => {
                   </option>
                 ))}
               </select>
+            </div>
+          ) : (
+            <div className="text-xs text-text-muted bg-surface-card border border-border-subtle px-3 py-1.5 rounded-xl">
+              No members in {branchName}
             </div>
           )}
 

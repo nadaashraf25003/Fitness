@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HeroSection } from '../../Components/public/HeroSection';
 import { AboutSection } from '../../Components/public/AboutSection';
 import { ServicesSection } from '../../Components/public/ServicesSection';
@@ -18,19 +18,23 @@ import { Search } from 'lucide-react';
 const VERIFIED_STORAGE_KEY = 'gym_verified_public_member';
 
 export const LandingPage: React.FC = () => {
-  const [plans] = useState<Plan[]>(subscriptionService.getPlans());
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [statusSearchEmail, setStatusSearchEmail] = useState<string>('');
   const [verifiedMember, setVerifiedMember] = useState<SubscriptionRequest | null>(() => {
     try {
-      const stored = localStorage.getItem(VERIFIED_STORAGE_KEY);
+      const stored = sessionStorage.getItem(VERIFIED_STORAGE_KEY);
       return stored ? JSON.parse(stored) : null;
     } catch {
       return null;
     }
   });
+
+  useEffect(() => {
+    subscriptionService.fetchPlans().then(setPlans).catch(() => {});
+  }, []);
 
   const handleSelectPlan = (plan: Plan) => {
     setSelectedPlan(plan);
@@ -48,7 +52,7 @@ export const LandingPage: React.FC = () => {
   const handleMemberVerified = (member: SubscriptionRequest) => {
     setVerifiedMember(member);
     try {
-      localStorage.setItem(VERIFIED_STORAGE_KEY, JSON.stringify(member));
+      sessionStorage.setItem(VERIFIED_STORAGE_KEY, JSON.stringify(member));
     } catch (e) {
       console.warn('Failed to cache verified member:', e);
     }

@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 class PendingRequestListItem(BaseModel):
     request_id: Union[int, str]
+    branch_id: Optional[int] = 1
     member_name: str
     member_code: Union[int, str]
     request_type: str

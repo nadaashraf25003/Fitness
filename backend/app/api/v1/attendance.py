@@ -131,7 +131,7 @@ def check_in_member(
 
     now = datetime.now()
     new_entry = Attendance(
-        branch_id=member.branch_id or 1,
+        branch_id=check_in_data.branch_id or member.branch_id or 1,
         member_id=member.id,
         member_name=member.full_name,
         photo_url=member.photo_url or member.photo,

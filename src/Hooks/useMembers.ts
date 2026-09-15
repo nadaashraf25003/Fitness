@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { Member, SubscriptionStatus } from '../types/member.types';
 import { memberService } from '../services/memberService';
 
-export function useMembers() {
-  const [members, setMembers] = useState<Member[]>(() => memberService.getAll());
+export function useMembers(branchId?: number) {
+  const [members, setMembers] = useState<Member[]>(() => memberService.getAll({ branch_id: branchId }));
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState<string>('');
@@ -14,7 +14,8 @@ export function useMembers() {
     setLoading(true);
     setError(null);
     try {
-      const filterParams: { search?: string; status?: string } = {};
+      const filterParams: { search?: string; status?: string; branch_id?: number } = {};
+      if (branchId) filterParams.branch_id = branchId;
       if (search.trim()) filterParams.search = search.trim();
       if (statusFilter !== 'all') filterParams.status = statusFilter;
 
@@ -25,7 +26,7 @@ export function useMembers() {
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter]);
+  }, [branchId, search, statusFilter]);
 
   useEffect(() => {
     fetchMembers();

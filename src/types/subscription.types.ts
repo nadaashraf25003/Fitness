@@ -49,4 +49,6 @@ export interface PaymentRecord {
   date: string;
   method: 'cash' | 'visa';
   status: 'paid' | 'partial' | 'unpaid';
+  branchId?: number;
+  branch_id?: number;
 }

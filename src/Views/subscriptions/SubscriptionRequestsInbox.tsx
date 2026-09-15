@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useBranch } from '../../Hooks/useBranch';
 import { useSubscriptionRequests } from '../../Hooks/useSubscriptionRequests';
 import { Table, Column } from '../../Components/ui/Table';
 import { Badge } from '../../Components/ui/Badge';
@@ -16,12 +17,14 @@ import {
   CreditCard,
   Phone,
   Mail,
-  Calendar,
+  Building2,
+  MapPin,
 } from 'lucide-react';
 import { SubscriptionRequest } from '../../types/subscription.types';
 import { formatDate } from '../../utils/dateUtils';
 
 export const SubscriptionRequestsInbox: React.FC = () => {
+  const { selectedBranch, setSelectedBranch, branchName, branchLocation, branches } = useBranch();
   const {
     requests,
     loading,
@@ -32,7 +35,7 @@ export const SubscriptionRequestsInbox: React.FC = () => {
     approveRequest,
     rejectRequest,
     clearMessages,
-  } = useSubscriptionRequests();
+  } = useSubscriptionRequests(selectedBranch);
 
   const [inspectingRequest, setInspectingRequest] = useState<SubscriptionRequest | null>(null);
 
@@ -62,12 +65,16 @@ export const SubscriptionRequestsInbox: React.FC = () => {
     },
     {
       key: 'planName',
-      header: 'Requested Plan',
+      header: 'Requested Plan & Branch',
       render: (r) => (
         <div>
           <span className="font-bold text-brand-primary">{r.planName || 'Standard Tier'}</span>
           <div className="text-xs text-text-muted mt-0.5">
             {r.duration ? `${r.duration} Mo • ` : ''}${r.paidAmount !== undefined ? `$${r.paidAmount}` : ''} via {r.paymentMethod || 'Card'}
+          </div>
+          <div className="text-[11px] text-text-muted mt-0.5 flex items-center gap-1 font-semibold text-emerald-400/90">
+            <MapPin className="w-3 h-3 text-emerald-400" />
+            <span>{r.branchId === 2 ? 'Branch 2 (Downtown City Center)' : 'Branch 1 (Main Khanqah)'}</span>
           </div>
         </div>
       ),
@@ -147,14 +154,35 @@ export const SubscriptionRequestsInbox: React.FC = () => {
           </p>
         </div>
 
-        <Button
-          variant="outline"
-          onClick={() => refreshRequests()}
-          isLoading={loading}
-          leftIcon={<RefreshCw className="w-4 h-4" />}
-        >
-          Refresh Feed
-        </Button>
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Branch Switcher Pills */}
+          <div className="flex items-center gap-1 bg-surface-card border border-border-subtle p-1 rounded-xl shadow-inner">
+            {branches.map((b) => (
+              <button
+                key={b.id}
+                type="button"
+                onClick={() => setSelectedBranch(b.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  selectedBranch === b.id
+                    ? 'bg-brand-primary text-black shadow-sm'
+                    : 'text-text-muted hover:text-text-main'
+                }`}
+              >
+                <Building2 className="w-3.5 h-3.5" />
+                <span>Branch {b.id}: {b.location}</span>
+              </button>
+            ))}
+          </div>
+
+          <Button
+            variant="outline"
+            onClick={() => refreshRequests()}
+            isLoading={loading}
+            leftIcon={<RefreshCw className="w-4 h-4" />}
+          >
+            Refresh Feed
+          </Button>
+        </div>
       </div>
 
       {/* Notifications */}
@@ -235,11 +263,17 @@ export const SubscriptionRequestsInbox: React.FC = () => {
               <Badge variant={inspectingRequest.status}>{inspectingRequest.status}</Badge>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
               <div className="p-3 rounded-xl bg-surface-card border border-border-subtle">
                 <span className="text-text-muted block">Selected Plan</span>
                 <span className="text-sm font-bold text-brand-primary mt-0.5 block">
                   {inspectingRequest.planName}
+                </span>
+              </div>
+              <div className="p-3 rounded-xl bg-surface-card border border-border-subtle">
+                <span className="text-text-muted block">Gym Location</span>
+                <span className="text-sm font-bold text-text-main mt-0.5 block">
+                  {inspectingRequest.branchId === 2 ? 'Downtown Branch' : 'Main Branch'}
                 </span>
               </div>
               <div className="p-3 rounded-xl bg-surface-card border border-border-subtle">

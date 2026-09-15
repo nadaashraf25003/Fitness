@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Modal } from '../ui/Modal';
-import { Plan, SubscriptionRequest } from '../../types/subscription.types';
-import { FormInput } from '../ui/FormInput';
-import { Button } from '../ui/Button';
-import { subscriptionService } from '../../services/subscriptionService';
+import React, { useState, useEffect } from "react";
+import { Modal } from "../ui/Modal";
+import { Plan, SubscriptionRequest } from "../../types/subscription.types";
+import { FormInput } from "../ui/FormInput";
+import { Button } from "../ui/Button";
+import { subscriptionService } from "../../services/subscriptionService";
+import { getStoredBranch } from "../../Hooks/useBranch";
 import {
   CheckCircle2,
   User,
@@ -27,8 +28,10 @@ import {
   Info,
   AlertCircle,
   Search,
-} from 'lucide-react';
-import { isValidEmail, isValidPhone } from '../../utils/validationUtils';
+  MapPin,
+  Building2,
+} from "lucide-react";
+import { isValidEmail, isValidPhone } from "../../utils/validationUtils";
 
 interface SubscriptionRequestModalProps {
   isOpen: boolean;
@@ -37,7 +40,7 @@ interface SubscriptionRequestModalProps {
   onOpenCheckStatus?: (email?: string) => void;
 }
 
-type PaymentMethodType = 'Visa' | 'Cash';
+type PaymentMethodType = "Visa" | "Cash";
 
 interface CardInfo {
   cardNumber: string;
@@ -47,30 +50,55 @@ interface CardInfo {
   saveCard: boolean;
 }
 
-export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> = ({
-  isOpen,
-  onClose,
-  selectedPlan,
-  onOpenCheckStatus,
-}) => {
+export const SubscriptionRequestModal: React.FC<
+  SubscriptionRequestModalProps
+> = ({ isOpen, onClose, selectedPlan, onOpenCheckStatus }) => {
   // Wizard steps: 'details' -> 'payment' -> 'otp' -> 'processing' -> 'success'
-  const [currentStep, setCurrentStep] = useState<'details' | 'payment' | 'otp' | 'processing' | 'success'>('details');
+  const [currentStep, setCurrentStep] = useState<
+    "details" | "payment" | "otp" | "processing" | "success"
+  >("details");
 
   const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    requestedStartDate: new Date().toISOString().split('T')[0],
-    paymentMethod: 'Visa' as PaymentMethodType,
-    notes: '',
+    fullName: "",
+    email: "",
+    phone: "",
+    branchId: getStoredBranch(),
+    requestedStartDate: new Date().toISOString().split("T")[0],
+    paymentMethod: "Visa" as PaymentMethodType,
+    notes: "",
   });
+
+  // Gym branches state
+  const [branches, setBranches] = useState<
+    Array<{ id: number; name: string; location: string; phone?: string; price_per_month?: number; offers?: string }>
+  >([
+    { id: 1, name: "Main Branch", location: "Khanqah", phone: "01000000000" },
+    { id: 2, name: "Downtown Branch", location: "City Center", phone: "01000000005" },
+  ]);
+
+  useEffect(() => {
+    subscriptionService.fetchBranches().then((list) => {
+      if (list && list.length > 0) {
+        setBranches(list);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      setFormData((prev) => ({
+        ...prev,
+        branchId: getStoredBranch(),
+      }));
+    }
+  }, [isOpen]);
 
   // Email existence verification states
   const [isCheckingEmail, setIsCheckingEmail] = useState<boolean>(false);
   const [emailCheckedResult, setEmailCheckedResult] = useState<{
     checked: boolean;
     exists: boolean;
-    reason?: 'member' | 'request' | 'user' | 'none';
+    reason?: "member" | "request" | "user" | "none";
     message: string;
     member?: any;
     request?: any;
@@ -78,34 +106,37 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
 
   // Visa card states
   const [cardData, setCardData] = useState<CardInfo>({
-    cardNumber: '',
-    cardHolder: '',
-    expiry: '',
-    cvv: '',
+    cardNumber: "",
+    cardHolder: "",
+    expiry: "",
+    cvv: "",
     saveCard: true,
   });
 
   const [isCardFlipped, setIsCardFlipped] = useState<boolean>(false);
 
   // 3D Secure OTP challenge states
-  const [otpCode, setOtpCode] = useState<string[]>(['', '', '', '', '', '']);
+  const [otpCode, setOtpCode] = useState<string[]>(["", "", "", "", "", ""]);
   const [otpTimer, setOtpTimer] = useState<number>(45);
-  const [otpError, setOtpError] = useState<string>('');
+  const [otpError, setOtpError] = useState<string>("");
 
   // UI helpers
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [emailSentToast, setEmailSentToast] = useState<boolean>(false);
   const [processingProgress, setProcessingProgress] = useState<number>(10);
-  const [processingStatus, setProcessingStatus] = useState<string>('Initializing secure connection...');
-  const [transactionRef, setTransactionRef] = useState<string>('');
-  const [authCode, setAuthCode] = useState<string>('');
-  const [submittedRequest, setSubmittedRequest] = useState<SubscriptionRequest | null>(null);
+  const [processingStatus, setProcessingStatus] = useState<string>(
+    "Initializing secure connection...",
+  );
+  const [transactionRef, setTransactionRef] = useState<string>("");
+  const [authCode, setAuthCode] = useState<string>("");
+  const [submittedRequest, setSubmittedRequest] =
+    useState<SubscriptionRequest | null>(null);
 
   // OTP Countdown timer effect
   useEffect(() => {
     let interval: any = null;
-    if (currentStep === 'otp' && otpTimer > 0) {
+    if (currentStep === "otp" && otpTimer > 0) {
       interval = setInterval(() => {
         setOtpTimer((prev) => prev - 1);
       }, 1000);
@@ -142,7 +173,8 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
         if (res.exists) {
           setErrors((prev) => ({
             ...prev,
-            email: res.message || 'This email is already registered in our system.',
+            email:
+              res.message || "This email is already registered in our system.",
           }));
         } else {
           setErrors((prev) => {
@@ -152,7 +184,7 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
           });
         }
       } catch (e) {
-        console.warn('Error verifying email existence:', e);
+        console.warn("Error verifying email existence:", e);
       } finally {
         if (isMounted) setIsCheckingEmail(false);
       }
@@ -166,37 +198,39 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
 
   // Detect card network brand
   const getCardBrand = (numberStr: string) => {
-    const clean = numberStr.replace(/\s/g, '');
-    return clean.startsWith('4') ? 'visa' : 'generic';
+    const clean = numberStr.replace(/\s/g, "");
+    return clean.startsWith("4") ? "visa" : "generic";
   };
 
   const cardBrand = getCardBrand(cardData.cardNumber);
 
   // Format Card Number (4-4-4-4)
   const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, '').slice(0, 16);
-    const formatted = raw.replace(/(\d{4})/g, '$1 ').trim();
+    const raw = e.target.value.replace(/\D/g, "").slice(0, 16);
+    const formatted = raw.replace(/(\d{4})/g, "$1 ").trim();
     setCardData((prev) => ({ ...prev, cardNumber: formatted }));
-    if (errors.cardNumber) setErrors((prev) => ({ ...prev, cardNumber: '' }));
+    if (errors.cardNumber) setErrors((prev) => ({ ...prev, cardNumber: "" }));
   };
 
   // Format Expiry (MM/YY)
   const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let raw = e.target.value.replace(/\D/g, '').slice(0, 4);
+    let raw = e.target.value.replace(/\D/g, "").slice(0, 4);
     if (raw.length > 2) {
       raw = `${raw.slice(0, 2)}/${raw.slice(2)}`;
     }
     setCardData((prev) => ({ ...prev, expiry: raw }));
-    if (errors.expiry) setErrors((prev) => ({ ...prev, expiry: '' }));
+    if (errors.expiry) setErrors((prev) => ({ ...prev, expiry: "" }));
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: '' }));
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
-    if (name === 'email') {
+    if (name === "email") {
       setEmailCheckedResult(null);
     }
   };
@@ -211,15 +245,18 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
   // Validate Step 1 (Applicant Information)
   const validateStep1 = () => {
     const errs: Record<string, string> = {};
-    if (!formData.fullName.trim()) errs.fullName = 'Full name is required';
+    if (!formData.fullName.trim()) errs.fullName = "Full name is required";
     if (!formData.email.trim() || !isValidEmail(formData.email)) {
-      errs.email = 'Valid email address is required';
+      errs.email = "Valid email address is required";
     }
     if (!formData.phone.trim() || !isValidPhone(formData.phone)) {
-      errs.phone = 'Valid phone number is required';
+      errs.phone = "Valid phone number is required";
+    }
+    if (!formData.branchId) {
+      errs.branchId = "Please select a gym branch";
     }
     if (!formData.requestedStartDate) {
-      errs.requestedStartDate = 'Start date is required';
+      errs.requestedStartDate = "Start date is required";
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -228,19 +265,19 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
   // Validate Step 2 (Payment Form Details)
   const validateStep2 = () => {
     const errs: Record<string, string> = {};
-    if (formData.paymentMethod === 'Visa') {
-      const cleanNum = cardData.cardNumber.replace(/\s/g, '');
-      if (!cleanNum.startsWith('4') || cleanNum.length !== 16) {
-        errs.cardNumber = 'Enter a valid 16-digit Visa card number';
+    if (formData.paymentMethod === "Visa") {
+      const cleanNum = cardData.cardNumber.replace(/\s/g, "");
+      if (!cleanNum.startsWith("4") || cleanNum.length !== 16) {
+        errs.cardNumber = "Enter a valid 16-digit Visa card number";
       }
       if (!cardData.cardHolder.trim()) {
-        errs.cardHolder = 'Cardholder name is required';
+        errs.cardHolder = "Cardholder name is required";
       }
       if (!cardData.expiry || cardData.expiry.length < 5) {
-        errs.expiry = 'Valid MM/YY required';
+        errs.expiry = "Valid MM/YY required";
       }
       if (!cardData.cvv || cardData.cvv.length < 3) {
-        errs.cvv = '3 or 4-digit CVV required';
+        errs.cvv = "3 or 4-digit CVV required";
       }
     }
     setErrors(errs);
@@ -255,7 +292,9 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
     // Check if email already exists
     setIsCheckingEmail(true);
     try {
-      const checkRes = await subscriptionService.checkEmail(formData.email.trim());
+      const checkRes = await subscriptionService.checkEmail(
+        formData.email.trim(),
+      );
       setIsCheckingEmail(false);
 
       if (checkRes.exists) {
@@ -269,7 +308,9 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
         });
         setErrors((prev) => ({
           ...prev,
-          email: checkRes.message || 'This email address is already registered in the gym system.',
+          email:
+            checkRes.message ||
+            "This email address is already registered in the gym system.",
         }));
         return;
       }
@@ -278,9 +319,12 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
     }
 
     if (!cardData.cardHolder) {
-      setCardData((prev) => ({ ...prev, cardHolder: formData.fullName.toUpperCase() }));
+      setCardData((prev) => ({
+        ...prev,
+        cardHolder: formData.fullName.toUpperCase(),
+      }));
     }
-    setCurrentStep('payment');
+    setCurrentStep("payment");
   };
 
   // Handle Initial Payment Submission (triggers 3D Secure OTP for card, or gateway for others)
@@ -288,12 +332,12 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
     e.preventDefault();
     if (!validateStep2() || !selectedPlan) return;
 
-    if (formData.paymentMethod === 'Visa') {
+    if (formData.paymentMethod === "Visa") {
       // Show 3D Secure OTP Challenge
-      setOtpCode(['', '', '', '', '', '']);
+      setOtpCode(["", "", "", "", "", ""]);
       setOtpTimer(45);
-      setOtpError('');
-      setCurrentStep('otp');
+      setOtpError("");
+      setCurrentStep("otp");
     } else {
       // Reserve the membership for payment at the front desk.
       triggerGatewayProcessing();
@@ -302,11 +346,11 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
 
   // Handle OTP Inputs
   const handleOtpChange = (index: number, val: string) => {
-    const digit = val.replace(/\D/g, '').slice(-1);
+    const digit = val.replace(/\D/g, "").slice(-1);
     const newOtp = [...otpCode];
     newOtp[index] = digit;
     setOtpCode(newOtp);
-    setOtpError('');
+    setOtpError("");
 
     // Auto-focus next input
     if (digit && index < 5) {
@@ -315,23 +359,26 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
     }
   };
 
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !otpCode[index] && index > 0) {
+  const handleOtpKeyDown = (
+    index: number,
+    e: React.KeyboardEvent<HTMLInputElement>,
+  ) => {
+    if (e.key === "Backspace" && !otpCode[index] && index > 0) {
       const prevInput = document.getElementById(`otp-input-${index - 1}`);
       prevInput?.focus();
     }
   };
 
   const handleAutofillOtp = () => {
-    setOtpCode(['9', '4', '8', '2', '0', '1']);
-    setOtpError('');
+    setOtpCode(["9", "4", "8", "2", "0", "1"]);
+    setOtpError("");
   };
 
   const handleVerifyOtp = (e: React.FormEvent) => {
     e.preventDefault();
-    const fullCode = otpCode.join('');
+    const fullCode = otpCode.join("");
     if (fullCode.length < 6) {
-      setOtpError('Please enter the full 6-digit security code');
+      setOtpError("Please enter the full 6-digit security code");
       return;
     }
     triggerGatewayProcessing();
@@ -339,7 +386,7 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
 
   // Real Multi-Stage Gateway Execution
   const triggerGatewayProcessing = async () => {
-    setCurrentStep('processing');
+    setCurrentStep("processing");
     const randomTxn = `TXN-2026-${Math.floor(10000000 + Math.random() * 90000000)}`;
     const randomAuth = `AUTH-${Math.floor(10000 + Math.random() * 90000)}`;
     setTransactionRef(randomTxn);
@@ -347,47 +394,55 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
 
     // Stage 1: TLS 1.3 Handshake
     setProcessingProgress(20);
-    setProcessingStatus('Establishing 256-bit TLS 1.3 encrypted connection...');
+    setProcessingStatus("Establishing 256-bit TLS 1.3 encrypted connection...");
     await new Promise((r) => setTimeout(r, 600));
 
     // Stage 2: Clearing Network
     setProcessingProgress(50);
-    if (formData.paymentMethod === 'Visa') {
-      setProcessingStatus('Routing token through Visa 3D-Secure 2.0 Network...');
+    if (formData.paymentMethod === "Visa") {
+      setProcessingStatus(
+        "Routing token through Visa 3D-Secure 2.0 Network...",
+      );
     } else {
-      setProcessingStatus('Securing front desk reservation & locking guaranteed pricing...');
+      setProcessingStatus(
+        "Securing front desk reservation & locking guaranteed pricing...",
+      );
     }
     await new Promise((r) => setTimeout(r, 700));
 
     // Stage 3: Bank Settlement
     setProcessingProgress(80);
-    setProcessingStatus('Settling funds with issuing bank & minting membership credentials...');
+    setProcessingStatus(
+      "Settling funds with issuing bank & minting membership credentials...",
+    );
     await new Promise((r) => setTimeout(r, 600));
 
     // Stage 4: Success Completion
     setProcessingProgress(100);
-    setProcessingStatus('Payment Authorized! Generating official digital tax invoice...');
+    setProcessingStatus(
+      "Payment Authorized! Generating official digital tax invoice...",
+    );
     await new Promise((r) => setTimeout(r, 400));
 
     // Determine descriptive payment method label for database & inbox
     let paymentDetailLabel: string = formData.paymentMethod;
-    if (formData.paymentMethod === 'Visa') {
-      paymentDetailLabel = `Visa •••• ${cardData.cardNumber.slice(-4) || '4242'}`;
+    if (formData.paymentMethod === "Visa") {
+      paymentDetailLabel = `Visa •••• ${cardData.cardNumber.slice(-4) || "4242"}`;
     } else {
-      paymentDetailLabel = 'Cash Voucher (Front Desk)';
+      paymentDetailLabel = "Cash Voucher (Front Desk)";
     }
 
     const fullNotes = [
-      formData.notes ? `Goals: ${formData.notes}` : '',
+      formData.notes ? `Goals: ${formData.notes}` : "",
       `Ref: ${randomTxn}`,
       `Auth: ${randomAuth}`,
       `Paid via: ${paymentDetailLabel}`,
     ]
       .filter(Boolean)
-      .join(' • ');
+      .join(" • ");
 
     if (selectedPlan) {
-      const created = subscriptionService.submitRequest({
+      const created = await subscriptionService.submitRequest({
         fullName: formData.fullName.trim(),
         email: formData.email.trim(),
         phone: formData.phone.trim(),
@@ -396,15 +451,15 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
         duration: selectedPlan.durationMonths,
         paidAmount: selectedPlan.price,
         paymentMethod: paymentDetailLabel,
-        requestType: 'new',
-        branchId: 1,
+        requestType: "new",
+        branchId: formData.branchId || 1,
         requestedStartDate: formData.requestedStartDate,
         notes: fullNotes,
       });
       setSubmittedRequest(created);
     }
 
-    setCurrentStep('success');
+    setCurrentStep("success");
   };
 
   const handleSendEmailReceipt = () => {
@@ -413,23 +468,24 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
   };
 
   const handleResetAndClose = () => {
-    setCurrentStep('details');
+    setCurrentStep("details");
     setSubmittedRequest(null);
     setEmailCheckedResult(null);
     setIsCheckingEmail(false);
     setFormData({
-      fullName: '',
-      email: '',
-      phone: '',
-      requestedStartDate: new Date().toISOString().split('T')[0],
-      paymentMethod: 'Visa',
-      notes: '',
+      fullName: "",
+      email: "",
+      phone: "",
+      branchId: 1,
+      requestedStartDate: new Date().toISOString().split("T")[0],
+      paymentMethod: "Visa",
+      notes: "",
     });
     setCardData({
-      cardNumber: '',
-      cardHolder: '',
-      expiry: '',
-      cvv: '',
+      cardNumber: "",
+      cardHolder: "",
+      expiry: "",
+      cvv: "",
       saveCard: true,
     });
     setIsCardFlipped(false);
@@ -443,37 +499,37 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
       isOpen={isOpen}
       onClose={handleResetAndClose}
       title={
-        currentStep === 'success'
-          ? 'Payment Confirmed & Membership Pass Ready!'
-          : currentStep === 'otp'
-          ? 'Bank Identity Check (3D Secure)'
-          : currentStep === 'payment'
-          ? 'Secure Checkout & Payment Gateway'
-          : currentStep === 'processing'
-          ? 'Authorizing Transaction...'
-          : selectedPlan?.isPopular
-          ? `Start Free Trial — ${selectedPlan?.name}`
-          : `Subscribe to GEM — ${selectedPlan?.name || 'Plan'}`
+        currentStep === "success"
+          ? "Payment Confirmed & Membership Pass Ready!"
+          : currentStep === "otp"
+            ? "Bank Identity Check (3D Secure)"
+            : currentStep === "payment"
+              ? "Secure Checkout & Payment Gateway"
+              : currentStep === "processing"
+                ? "Authorizing Transaction..."
+                : selectedPlan?.isPopular
+                  ? `Start Free Trial — ${selectedPlan?.name}`
+                  : `Subscribe to GEM — ${selectedPlan?.name || "Plan"}`
       }
       subtitle={
-        currentStep === 'success'
-          ? 'Your transaction was settled successfully. Official digital invoice generated.'
-          : currentStep === 'otp'
-          ? 'Please enter the verification code sent by your bank to authorize payment.'
-          : currentStep === 'payment'
-          ? 'Complete your billing information to activate your gym enrollment.'
-          : currentStep === 'processing'
-          ? 'Communicating with banking network over 256-bit encrypted SSL...'
-          : selectedPlan?.isPopular
-          ? 'Fill in your details below to activate your instant free trial pass.'
-          : 'Fill in your details below to join GEM Fitness.'
+        currentStep === "success"
+          ? "Your transaction was settled successfully. Official digital invoice generated."
+          : currentStep === "otp"
+            ? "Please enter the verification code sent by your bank to authorize payment."
+            : currentStep === "payment"
+              ? "Complete your billing information to activate your gym enrollment."
+              : currentStep === "processing"
+                ? "Communicating with banking network over 256-bit encrypted SSL..."
+                : selectedPlan?.isPopular
+                  ? "Fill in your details below to activate your instant free trial pass."
+                  : "Fill in your details below to join GEM Fitness."
       }
-      maxWidth={currentStep === 'success' ? 'lg' : 'md'}
+      maxWidth={currentStep === "success" ? "lg" : "md"}
     >
       {/* ========================================================= */}
       {/* STEP 3: 3D SECURE BANK OTP CHALLENGE */}
       {/* ========================================================= */}
-      {currentStep === 'otp' && (
+      {currentStep === "otp" && (
         <form onSubmit={handleVerifyOtp} className="space-y-5 py-2">
           {/* Bank Security Header */}
           <div className="p-4 rounded-2xl bg-surface-card border border-border-subtle flex items-center justify-between">
@@ -490,19 +546,26 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
                     SECURE 2.0
                   </span>
                 </div>
-                <p className="text-[11px] text-text-muted">Central Banking Authorization Challenge</p>
+                <p className="text-[11px] text-text-muted">
+                  Central Banking Authorization Challenge
+                </p>
               </div>
             </div>
             <div className="text-right">
               <span className="text-xs text-text-muted block">Amount:</span>
-              <span className="text-sm font-extrabold text-brand-primary font-heading">${selectedPlan?.price} USD</span>
+              <span className="text-sm font-extrabold text-brand-primary font-heading">
+                ${selectedPlan?.price} USD
+              </span>
             </div>
           </div>
 
           <div className="text-center space-y-2">
             <p className="text-xs text-text-muted">
-              We sent a 6-digit authentication code via SMS to your mobile ending in{' '}
-              <strong className="text-text-main">•••• {formData.phone.slice(-4) || '8492'}</strong>
+              We sent a 6-digit authentication code via SMS to your mobile
+              ending in{" "}
+              <strong className="text-text-main">
+                •••• {formData.phone.slice(-4) || "8492"}
+              </strong>
             </p>
 
             {/* Quick test chip */}
@@ -537,13 +600,15 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
           </div>
 
           {otpError && (
-            <p className="text-xs text-center text-rose-400 font-medium">{otpError}</p>
+            <p className="text-xs text-center text-rose-400 font-medium">
+              {otpError}
+            </p>
           )}
 
           {/* Timer & Resend */}
           <div className="flex items-center justify-between text-xs px-2 text-text-muted">
             <span>
-              Code expires in:{' '}
+              Code expires in:{" "}
               <strong className="font-mono text-brand-primary">
                 00:{otpTimer < 10 ? `0${otpTimer}` : otpTimer}
               </strong>
@@ -552,11 +617,13 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
               type="button"
               onClick={() => {
                 setOtpTimer(45);
-                setOtpError('');
+                setOtpError("");
               }}
               disabled={otpTimer > 0}
               className={`font-semibold transition-colors cursor-pointer ${
-                otpTimer > 0 ? 'opacity-40 cursor-not-allowed' : 'text-brand-primary hover:underline'
+                otpTimer > 0
+                  ? "opacity-40 cursor-not-allowed"
+                  : "text-brand-primary hover:underline"
               }`}
             >
               Resend SMS Code
@@ -569,7 +636,7 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
               type="button"
               variant="outline"
               className="flex-1"
-              onClick={() => setCurrentStep('payment')}
+              onClick={() => setCurrentStep("payment")}
             >
               Cancel
             </Button>
@@ -588,7 +655,7 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
       {/* ========================================================= */}
       {/* STEP: PROCESSING GATEWAY SIMULATION */}
       {/* ========================================================= */}
-      {currentStep === 'processing' && (
+      {currentStep === "processing" && (
         <div className="py-10 text-center space-y-6">
           <div className="relative w-24 h-24 mx-auto">
             {/* Spinning glowing ring */}
@@ -602,7 +669,9 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
           <div className="max-w-xs mx-auto space-y-2">
             <div className="flex justify-between text-xs text-text-muted">
               <span>Security Clearance</span>
-              <span className="font-mono font-bold text-brand-primary">{processingProgress}%</span>
+              <span className="font-mono font-bold text-brand-primary">
+                {processingProgress}%
+              </span>
             </div>
             <div className="w-full h-2 rounded-full bg-surface-card overflow-hidden border border-border-subtle">
               <div
@@ -631,7 +700,7 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
       {/* ========================================================= */}
       {/* STEP: SUCCESS & OFFICIAL TAX INVOICE RECEIPT */}
       {/* ========================================================= */}
-      {currentStep === 'success' && submittedRequest && (
+      {currentStep === "success" && submittedRequest && (
         <div className="space-y-5 py-1">
           {/* Header Banner */}
           <div className="text-center space-y-1.5">
@@ -642,7 +711,8 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
               Payment Confirmed! Welcome, {submittedRequest.fullName}
             </h4>
             <p className="text-xs text-text-muted max-w-md mx-auto">
-              Your membership for <strong>{submittedRequest.planName}</strong> is authorized and activated on{' '}
+              Your membership for <strong>{submittedRequest.planName}</strong>{" "}
+              is authorized and activated on{" "}
               {submittedRequest.requestedStartDate}.
             </p>
           </div>
@@ -657,12 +727,16 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
                     GEM FITNESS CLUB LLC
                   </span>
                 </div>
-                <p className="text-[10px] text-text-muted">Official Tax Invoice • VAT #EG300-849-102</p>
+                <p className="text-[10px] text-text-muted">
+                  Official Tax Invoice • VAT #EG300-849-102
+                </p>
               </div>
               <div className="text-right">
                 <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-extrabold uppercase tracking-wider inline-flex items-center gap-1">
                   <Check className="w-3 h-3" />
-                  {submittedRequest.paymentMethod?.includes('Cash') ? 'VOUCHER ACTIVE' : 'PAID & SETTLED'}
+                  {submittedRequest.paymentMethod?.includes("Cash")
+                    ? "VOUCHER ACTIVE"
+                    : "PAID & SETTLED"}
                 </span>
               </div>
             </div>
@@ -670,28 +744,45 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
             {/* Grid Data */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               <div className="p-2.5 rounded-xl bg-surface-elevated/60 border border-border-subtle">
-                <span className="text-text-muted block text-[10px] uppercase font-semibold">Transaction ID</span>
+                <span className="text-text-muted block text-[10px] uppercase font-semibold">
+                  Transaction ID
+                </span>
                 <span className="font-mono font-bold text-brand-primary text-xs mt-0.5 block truncate">
-                  {transactionRef || 'TXN-2026-918204'}
+                  {transactionRef || "TXN-2026-918204"}
                 </span>
               </div>
 
               <div className="p-2.5 rounded-xl bg-surface-elevated/60 border border-border-subtle">
-                <span className="text-text-muted block text-[10px] uppercase font-semibold">Auth Code</span>
+                <span className="text-text-muted block text-[10px] uppercase font-semibold">
+                  Auth Code
+                </span>
                 <span className="font-mono font-bold text-text-main text-xs mt-0.5 block">
-                  {authCode || 'AUTH-94810'}
+                  {authCode || "AUTH-94810"}
                 </span>
               </div>
 
               <div className="p-2.5 rounded-xl bg-surface-elevated/60 border border-border-subtle">
-                <span className="text-text-muted block text-[10px] uppercase font-semibold">Tracking ID</span>
+                <span className="text-text-muted block text-[10px] uppercase font-semibold">
+                  Tracking ID
+                </span>
                 <span className="font-mono font-bold text-text-main text-xs mt-0.5 block truncate">
                   {submittedRequest.id}
                 </span>
               </div>
 
               <div className="p-2.5 rounded-xl bg-surface-elevated/60 border border-border-subtle">
-                <span className="text-text-muted block text-[10px] uppercase font-semibold">Payment Method</span>
+                <span className="text-text-muted block text-[10px] uppercase font-semibold">
+                  Gym Location
+                </span>
+                <span className="font-bold text-brand-primary text-xs mt-0.5 block truncate">
+                  {branches.find((b) => b.id === (submittedRequest.branchId || formData.branchId))?.name || "Main Branch"}
+                </span>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-surface-elevated/60 border border-border-subtle">
+                <span className="text-text-muted block text-[10px] uppercase font-semibold">
+                  Payment Method
+                </span>
                 <span className="font-semibold text-text-main text-xs mt-0.5 block truncate">
                   {submittedRequest.paymentMethod}
                 </span>
@@ -714,7 +805,11 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
                       {submittedRequest.planName} Membership
                     </td>
                     <td className="py-2 px-3 text-center text-text-muted">
-                      {submittedRequest.duration || 1} Month{submittedRequest.duration && submittedRequest.duration > 1 ? 's' : ''}
+                      {submittedRequest.duration || 1} Month
+                      {submittedRequest.duration &&
+                      submittedRequest.duration > 1
+                        ? "s"
+                        : ""}
                     </td>
                     <td className="py-2 px-3 text-right font-bold text-text-main">
                       ${submittedRequest.paidAmount} USD
@@ -724,13 +819,20 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
                     <td className="py-2 px-3 text-text-muted">
                       Full Facility & Locker Keycard Access
                     </td>
-                    <td className="py-2 px-3 text-center text-text-muted">Included</td>
-                    <td className="py-2 px-3 text-right text-emerald-400 font-semibold">$0.00</td>
+                    <td className="py-2 px-3 text-center text-text-muted">
+                      Included
+                    </td>
+                    <td className="py-2 px-3 text-right text-emerald-400 font-semibold">
+                      $0.00
+                    </td>
                   </tr>
                 </tbody>
                 <tfoot className="bg-surface-elevated/70 font-bold">
                   <tr>
-                    <td colSpan={2} className="py-2.5 px-3 text-text-main text-right">
+                    <td
+                      colSpan={2}
+                      className="py-2.5 px-3 text-text-main text-right"
+                    >
                       Total Paid:
                     </td>
                     <td className="py-2.5 px-3 text-right text-brand-primary text-sm font-black">
@@ -749,13 +851,16 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <span className="font-bold text-text-main">Digital Gym Entry Pass</span>
+                    <span className="font-bold text-text-main">
+                      Digital Gym Entry Pass
+                    </span>
                     <span className="text-[9px] px-1.5 py-0.2 rounded bg-brand-primary/10 text-brand-primary font-mono font-bold">
-                      KEY-{submittedRequest.id.replace('req-', '')}
+                      KEY-{submittedRequest.id.replace("req-", "")}
                     </span>
                   </div>
                   <span className="text-[10px] text-text-muted block">
-                    Scan this QR at the turnstile or show to front desk reception.
+                    Scan this QR at the turnstile or show to front desk
+                    reception.
                   </span>
                 </div>
               </div>
@@ -784,7 +889,7 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
               leftIcon={<Send className="w-4 h-4" />}
               onClick={handleSendEmailReceipt}
             >
-              {emailSentToast ? 'Receipt Sent! ✓' : 'Email Invoice'}
+              {emailSentToast ? "Receipt Sent! ✓" : "Email Invoice"}
             </Button>
 
             <Button
@@ -802,12 +907,14 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
       {/* ========================================================= */}
       {/* STEP 1: APPLICANT DETAILS FORM */}
       {/* ========================================================= */}
-      {currentStep === 'details' && (
+      {currentStep === "details" && (
         <form onSubmit={handleProceedToPayment} className="space-y-4">
           {/* Plan Header Banner */}
           <div className="p-3.5 rounded-xl bg-gradient-to-r from-brand-primary/15 via-surface-card to-surface-card border border-brand-primary/30 flex justify-between items-center text-xs">
             <div>
-              <span className="text-text-muted text-[11px] block">Selected Membership Package:</span>
+              <span className="text-text-muted text-[11px] block">
+                Selected Membership Package:
+              </span>
               <span className="font-extrabold text-brand-primary font-heading text-sm sm:text-base">
                 {selectedPlan?.name}
               </span>
@@ -817,7 +924,10 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
                 ${selectedPlan?.price}
               </span>
               <span className="text-[10px] text-text-muted block">
-                / {selectedPlan?.durationMonths === 1 ? 'month' : `${selectedPlan?.durationMonths} months`}
+                /{" "}
+                {selectedPlan?.durationMonths === 1
+                  ? "month"
+                  : `${selectedPlan?.durationMonths} months`}
               </span>
             </div>
           </div>
@@ -845,15 +955,18 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
               rightIcon={
                 isCheckingEmail ? (
                   <RotateCw className="w-4 h-4 text-brand-primary animate-spin" />
-                ) : emailCheckedResult?.checked && !emailCheckedResult.exists ? (
+                ) : emailCheckedResult?.checked &&
+                  !emailCheckedResult.exists ? (
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                 ) : emailCheckedResult?.checked && emailCheckedResult.exists ? (
                   <AlertCircle className="w-4 h-4 text-rose-400" />
                 ) : null
               }
               helperText={
-                !errors.email && emailCheckedResult?.checked && !emailCheckedResult.exists
-                  ? '✓ Email is available for your trial pass'
+                !errors.email &&
+                emailCheckedResult?.checked &&
+                !emailCheckedResult.exists
+                  ? "✓ Email is available for your trial pass"
                   : undefined
               }
             />
@@ -901,6 +1014,68 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
             </div>
           )}
 
+          {/* Gym Branch Selector */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-brand-primary" />
+                Select Gym Branch Location <span className="text-rose-400">*</span>
+              </span>
+              <span className="text-[10px] text-brand-primary font-bold">
+                {branches.find((b) => b.id === formData.branchId)?.name || 'Main Branch'}
+              </span>
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {branches.map((branch) => {
+                const isSelected = formData.branchId === branch.id;
+                return (
+                  <button
+                    key={branch.id}
+                    type="button"
+                    onClick={() => {
+                      setFormData((prev) => ({ ...prev, branchId: branch.id }));
+                      if (errors.branchId) {
+                        setErrors((prev) => {
+                          const next = { ...prev };
+                          delete next.branchId;
+                          return next;
+                        });
+                      }
+                    }}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                      isSelected
+                        ? "border-brand-primary bg-brand-primary/10 text-brand-primary shadow-sm ring-1 ring-brand-primary/50"
+                        : "border-border-subtle bg-surface-card hover:border-brand-primary/40 text-text-muted hover:text-text-main"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full mb-1">
+                      <div className="flex items-center gap-2">
+                        <Building2
+                          className={`w-4 h-4 ${isSelected ? "text-brand-primary" : "text-text-muted"}`}
+                        />
+                        <span
+                          className={`text-xs font-bold ${isSelected ? "text-brand-primary" : "text-text-main"}`}
+                        >
+                          {branch.name}
+                        </span>
+                      </div>
+                      {isSelected && (
+                        <span className="w-2 h-2 rounded-full bg-brand-primary ring-2 ring-brand-primary/30" />
+                      )}
+                    </div>
+                    <div className="text-[11px] text-text-muted mt-0.5 flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-brand-primary/70 flex-shrink-0" />
+                      <span>{branch.location}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            {errors.branchId && (
+              <p className="text-xs text-rose-400 mt-1 font-medium">{errors.branchId}</p>
+            )}
+          </div>
+
           <FormInput
             label="Preferred Start Date"
             name="requestedStartDate"
@@ -941,10 +1116,10 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
               disabled={isCheckingEmail}
             >
               {isCheckingEmail
-                ? 'Verifying Email Availability...'
+                ? "Verifying Email Availability..."
                 : selectedPlan?.isPopular
-                ? `Start Free Trial (${selectedPlan?.name})`
-                : `Continue to Payment ($${selectedPlan?.price})`}
+                  ? `Start Free Trial (${selectedPlan?.name})`
+                  : `Continue to Payment ($${selectedPlan?.price})`}
             </Button>
           </div>
         </form>
@@ -953,13 +1128,13 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
       {/* ========================================================= */}
       {/* STEP 2: REALISTIC PAYMENT METHOD & CHECKOUT DETAILS */}
       {/* ========================================================= */}
-      {currentStep === 'payment' && (
+      {currentStep === "payment" && (
         <form onSubmit={handleInitiatePayment} className="space-y-4">
           {/* Back Navigation & Summary Header */}
           <div className="flex items-center justify-between pb-2 border-b border-border-subtle">
             <button
               type="button"
-              onClick={() => setCurrentStep('details')}
+              onClick={() => setCurrentStep("details")}
               className="text-xs text-text-muted hover:text-brand-primary flex items-center gap-1 font-semibold cursor-pointer transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
@@ -977,8 +1152,18 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
             </label>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { id: 'Visa', label: 'Visa', icon: CreditCard, subtitle: 'Visa cards only' },
-                { id: 'Cash', label: 'Cash', icon: Banknote, subtitle: 'Front Desk' },
+                {
+                  id: "Visa",
+                  label: "Visa",
+                  icon: CreditCard,
+                  subtitle: "Visa cards only",
+                },
+                {
+                  id: "Cash",
+                  label: "Cash",
+                  icon: Banknote,
+                  subtitle: "Front Desk",
+                },
               ].map((method) => {
                 const Icon = method.icon;
                 const isSelected = formData.paymentMethod === method.id;
@@ -987,21 +1172,30 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
                     key={method.id}
                     type="button"
                     onClick={() => {
-                      setFormData((prev) => ({ ...prev, paymentMethod: method.id as PaymentMethodType }));
+                      setFormData((prev) => ({
+                        ...prev,
+                        paymentMethod: method.id as PaymentMethodType,
+                      }));
                       setErrors({});
                     }}
                     className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
                       isSelected
-                        ? 'border-brand-primary bg-brand-primary/10 text-brand-primary shadow-sm ring-1 ring-brand-primary/50'
-                        : 'border-border-subtle bg-surface-card hover:border-brand-primary/40 text-text-muted hover:text-text-main'
+                        ? "border-brand-primary bg-brand-primary/10 text-brand-primary shadow-sm ring-1 ring-brand-primary/50"
+                        : "border-border-subtle bg-surface-card hover:border-brand-primary/40 text-text-muted hover:text-text-main"
                     }`}
                   >
                     <div className="flex items-center justify-between w-full mb-1">
-                      <Icon className={`w-4 h-4 ${isSelected ? 'text-brand-primary' : 'text-text-muted'}`} />
-                      {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-brand-primary" />}
+                      <Icon
+                        className={`w-4 h-4 ${isSelected ? "text-brand-primary" : "text-text-muted"}`}
+                      />
+                      {isSelected && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-brand-primary" />
+                      )}
                     </div>
                     <div>
-                      <div className={`text-xs font-bold ${isSelected ? 'text-brand-primary' : 'text-text-main'}`}>
+                      <div
+                        className={`text-xs font-bold ${isSelected ? "text-brand-primary" : "text-text-main"}`}
+                      >
                         {method.label}
                       </div>
                       <div className="text-[9px] text-text-muted mt-0.5 leading-tight truncate">
@@ -1019,26 +1213,28 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
           {/* ========================================================= */}
           {/* OPTION 1: CREDIT / DEBIT CARD (WITH 3D FLIP) */}
           {/* ========================================================= */}
-          {formData.paymentMethod === 'Visa' && (
+          {formData.paymentMethod === "Visa" && (
             <div className="space-y-4 pt-1">
               {/* Interactive Visa card */}
               <div
                 className="relative w-full h-48 cursor-pointer select-none"
-                style={{ perspective: '1000px' }}
+                style={{ perspective: "1000px" }}
                 onClick={() => setIsCardFlipped(!isCardFlipped)}
                 title="Click to flip card"
               >
                 <div
                   className="w-full h-full duration-500 transition-transform rounded-2xl relative shadow-2xl"
                   style={{
-                    transformStyle: 'preserve-3d',
-                    transform: isCardFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                    transformStyle: "preserve-3d",
+                    transform: isCardFlipped
+                      ? "rotateY(180deg)"
+                      : "rotateY(0deg)",
                   }}
                 >
                   {/* FRONT OF CARD */}
                   <div
                     className="absolute inset-0 w-full h-full rounded-2xl p-5 bg-gradient-to-tr from-zinc-950 via-slate-900 to-cyan-950 border border-brand-primary/40 text-white flex flex-col justify-between overflow-hidden"
-                    style={{ backfaceVisibility: 'hidden' }}
+                    style={{ backfaceVisibility: "hidden" }}
                   >
                     {/* Background glow decoration */}
                     <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-brand-primary/20 blur-2xl pointer-events-none" />
@@ -1053,7 +1249,13 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
                           <div className="h-full w-[1px] bg-amber-800/40 absolute right-3" />
                         </div>
                         {/* Wireless Contactless Icon */}
-                        <svg className="w-4 h-4 text-cyan-300/80 rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg
+                          className="w-4 h-4 text-cyan-300/80 rotate-90"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
                           <path d="M2 8.5C5.5 5 10.5 5 14 8.5" />
                           <path d="M5 12C7.5 9.5 11.5 9.5 14 12" />
                           <path d="M8 15.5C9.5 14 11.5 14 13 15.5" />
@@ -1062,12 +1264,12 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
 
                       {/* Brand Logo Badge */}
                       <div className="flex items-center gap-1.5">
-                        {cardBrand === 'visa' && (
+                        {cardBrand === "visa" && (
                           <span className="font-extrabold text-base italic tracking-widest text-cyan-300 drop-shadow">
                             VISA
                           </span>
                         )}
-                        {cardBrand === 'generic' && (
+                        {cardBrand === "generic" && (
                           <span className="text-[10px] tracking-widest font-mono text-cyan-300 font-bold border border-cyan-400/40 px-2 py-0.5 rounded">
                             GEM SECURE
                           </span>
@@ -1077,7 +1279,7 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
 
                     {/* Card Number */}
                     <div className="font-mono text-base sm:text-lg tracking-[0.2em] font-bold text-white/95 drop-shadow relative z-10">
-                      {cardData.cardNumber || '•••• •••• •••• ••••'}
+                      {cardData.cardNumber || "•••• •••• •••• ••••"}
                     </div>
 
                     {/* Cardholder & Expiry */}
@@ -1087,7 +1289,9 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
                           Cardholder Name
                         </span>
                         <span className="font-bold text-white uppercase tracking-wider text-xs truncate max-w-[180px] block">
-                          {cardData.cardHolder || formData.fullName || 'ALEX MORGAN'}
+                          {cardData.cardHolder ||
+                            formData.fullName ||
+                            "ALEX MORGAN"}
                         </span>
                       </div>
                       <div className="text-right">
@@ -1095,7 +1299,7 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
                           Expires
                         </span>
                         <span className="font-mono font-bold text-white text-xs">
-                          {cardData.expiry || 'MM/YY'}
+                          {cardData.expiry || "MM/YY"}
                         </span>
                       </div>
                     </div>
@@ -1105,8 +1309,8 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
                   <div
                     className="absolute inset-0 w-full h-full rounded-2xl p-4 bg-gradient-to-tr from-zinc-950 via-slate-900 to-zinc-900 border border-brand-primary/40 text-white flex flex-col justify-between overflow-hidden"
                     style={{
-                      backfaceVisibility: 'hidden',
-                      transform: 'rotateY(180deg)',
+                      backfaceVisibility: "hidden",
+                      transform: "rotateY(180deg)",
                     }}
                   >
                     {/* Magnetic Stripe */}
@@ -1117,14 +1321,18 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
                       <div className="flex items-center gap-2">
                         <div className="flex-1 h-7 bg-white/90 rounded flex items-center px-2">
                           <span className="font-serif italic text-zinc-600 text-xs truncate select-none">
-                            {cardData.cardHolder || formData.fullName || 'Authorized Signature'}
+                            {cardData.cardHolder ||
+                              formData.fullName ||
+                              "Authorized Signature"}
                           </span>
                         </div>
                         <div className="w-14 h-7 bg-amber-100 rounded border border-amber-300 flex items-center justify-center font-mono font-bold text-xs text-zinc-900">
-                          {cardData.cvv ? '•••' : 'CVV'}
+                          {cardData.cvv ? "•••" : "CVV"}
                         </div>
                       </div>
-                      <p className="text-[8px] text-zinc-400 text-right">3 or 4-digit security code on back</p>
+                      <p className="text-[8px] text-zinc-400 text-right">
+                        3 or 4-digit security code on back
+                      </p>
                     </div>
 
                     {/* Fine print & hologram */}
@@ -1152,8 +1360,12 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
                   placeholder="ALEX MORGAN"
                   value={cardData.cardHolder}
                   onChange={(e) => {
-                    setCardData((prev) => ({ ...prev, cardHolder: e.target.value.toUpperCase() }));
-                    if (errors.cardHolder) setErrors((prev) => ({ ...prev, cardHolder: '' }));
+                    setCardData((prev) => ({
+                      ...prev,
+                      cardHolder: e.target.value.toUpperCase(),
+                    }));
+                    if (errors.cardHolder)
+                      setErrors((prev) => ({ ...prev, cardHolder: "" }));
                   }}
                   error={errors.cardHolder}
                   leftIcon={<User className="w-4 h-4" />}
@@ -1179,9 +1391,12 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
                       maxLength={4}
                       value={cardData.cvv}
                       onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+                        const val = e.target.value
+                          .replace(/\D/g, "")
+                          .slice(0, 4);
                         setCardData((prev) => ({ ...prev, cvv: val }));
-                        if (errors.cvv) setErrors((prev) => ({ ...prev, cvv: '' }));
+                        if (errors.cvv)
+                          setErrors((prev) => ({ ...prev, cvv: "" }));
                       }}
                       error={errors.cvv}
                       leftIcon={<Lock className="w-4 h-4" />}
@@ -1194,10 +1409,17 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
                   <input
                     type="checkbox"
                     checked={cardData.saveCard}
-                    onChange={(e) => setCardData((prev) => ({ ...prev, saveCard: e.target.checked }))}
+                    onChange={(e) =>
+                      setCardData((prev) => ({
+                        ...prev,
+                        saveCard: e.target.checked,
+                      }))
+                    }
                     className="rounded border-border-subtle text-brand-primary focus:ring-brand-primary/40 w-4 h-4"
                   />
-                  <span>Save card securely for 1-click renewal (PCI-DSS tokenized)</span>
+                  <span>
+                    Save card securely for 1-click renewal (PCI-DSS tokenized)
+                  </span>
                 </label>
               </div>
             </div>
@@ -1206,22 +1428,28 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
           {/* ========================================================= */}
           {/* OPTION 5: CASH ON ARRIVAL */}
           {/* ========================================================= */}
-          {formData.paymentMethod === 'Cash' && (
+          {formData.paymentMethod === "Cash" && (
             <div className="p-5 rounded-2xl bg-surface-card border border-border-subtle space-y-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center flex-shrink-0 border border-amber-500/30">
                   <Banknote className="w-5 h-5" />
                 </div>
                 <div>
-                  <h5 className="text-xs font-bold text-text-main">Pay Cash at Front Desk</h5>
+                  <h5 className="text-xs font-bold text-text-main">
+                    Pay Cash at Front Desk
+                  </h5>
                   <p className="text-[11px] text-text-muted">
-                    Instant guaranteed spot reservation. Pay upon arrival on {formData.requestedStartDate}.
+                    Instant guaranteed spot reservation. Pay upon arrival on{" "}
+                    {formData.requestedStartDate}.
                   </p>
                 </div>
               </div>
               <div className="p-3 rounded-xl bg-surface-elevated/70 border border-border-subtle text-xs text-text-muted flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                <span>Price locked: <strong>${selectedPlan?.price} USD</strong> with zero upfront booking fees.</span>
+                <span>
+                  Price locked: <strong>${selectedPlan?.price} USD</strong> with
+                  zero upfront booking fees.
+                </span>
               </div>
             </div>
           )}
@@ -1229,12 +1457,18 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
           {/* Order Total Breakdown */}
           <div className="p-3.5 rounded-xl bg-surface-elevated border border-border-subtle text-xs space-y-1.5 text-text-muted">
             <div className="flex justify-between">
-              <span>{selectedPlan?.name} ({selectedPlan?.durationMonths || 1} Mo)</span>
-              <span className="font-medium text-text-main">${selectedPlan?.price}</span>
+              <span>
+                {selectedPlan?.name} ({selectedPlan?.durationMonths || 1} Mo)
+              </span>
+              <span className="font-medium text-text-main">
+                ${selectedPlan?.price}
+              </span>
             </div>
             <div className="flex justify-between">
               <span>Gym Access & Locker Key Provisioning</span>
-              <span className="text-emerald-400 font-semibold">FREE ($0.00)</span>
+              <span className="text-emerald-400 font-semibold">
+                FREE ($0.00)
+              </span>
             </div>
             <div className="flex justify-between">
               <span>VAT / Service Charges</span>
@@ -1242,7 +1476,9 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
             </div>
             <div className="flex justify-between pt-2 border-t border-border-subtle text-sm font-bold text-text-main">
               <span>Total Amount:</span>
-              <span className="text-brand-primary text-base">${selectedPlan?.price} USD</span>
+              <span className="text-brand-primary text-base">
+                ${selectedPlan?.price} USD
+              </span>
             </div>
           </div>
 
@@ -1255,7 +1491,7 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
               className="w-full font-bold shadow-lg shadow-brand-primary/20"
               leftIcon={<ShieldCheck className="w-4 h-4" />}
             >
-              {formData.paymentMethod === 'Cash'
+              {formData.paymentMethod === "Cash"
                 ? `Confirm Reservation ($${selectedPlan?.price} Cash)`
                 : `Authorize Visa payment ($${selectedPlan?.price})`}
             </Button>

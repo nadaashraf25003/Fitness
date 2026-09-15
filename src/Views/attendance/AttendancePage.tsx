@@ -18,12 +18,15 @@ import {
   Dumbbell,
   User,
   Filter,
+  Building2,
 } from 'lucide-react';
 import { CheckInEntry } from '../../types/attendance.types';
 import { useAttendance } from '../../Hooks/useAttendance';
+import { useBranch } from '../../Hooks/useBranch';
 import { formatAttendanceTime } from '../../utils/dateUtils';
 
 export const AttendancePage: React.FC = () => {
+  const { selectedBranch, setSelectedBranch, branchName, branchLocation, branches } = useBranch();
   const {
     entries,
     stats,
@@ -35,7 +38,7 @@ export const AttendancePage: React.FC = () => {
     checkOut,
     refresh,
     clearMessages,
-  } = useAttendance();
+  } = useAttendance(selectedBranch);
 
   const [search, setSearch] = useState('');
   const [filterTab, setFilterTab] = useState<'all' | 'inside' | 'checked-out'>('all');
@@ -200,7 +203,26 @@ export const AttendancePage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Branch Selector Pill */}
+          <div className="flex items-center gap-1 bg-surface-card border border-border-subtle p-1 rounded-xl">
+            {branches.map((b) => (
+              <button
+                key={b.id}
+                type="button"
+                onClick={() => setSelectedBranch(b.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  selectedBranch === b.id
+                    ? 'bg-brand-primary text-black shadow-sm'
+                    : 'text-text-muted hover:text-text-main'
+                }`}
+              >
+                <Building2 className="w-3.5 h-3.5" />
+                <span>Branch {b.id}: {b.location}</span>
+              </button>
+            ))}
+          </div>
+
           <Button
             variant="outline"
             size="sm"
