@@ -1,16 +1,15 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { getStoredItem } from '../utils/storageUtils';
 
-// Resolve the API base URL from the environment variable baked in at build time.
-//
-// .env              (local dev)  → VITE_API_BASE_URL=http://localhost:8000
-// .env.production   (Vercel)     → VITE_API_BASE_URL=   (empty string)
-//
-// When the value is empty/absent in production, axios uses relative paths (baseURL='')
-// so all requests go to the same origin and Vercel rewrites route them to the backend.
-const _envUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
-const API_BASE_URL: string = _envUrl && _envUrl.trim() !== '' ? _envUrl.trim() : '';
+// Base backend URL configured via .env (in production on Vercel it uses relative path '')
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL !== undefined
+    ? import.meta.env.VITE_API_BASE_URL
+    : import.meta.env.PROD
+    ? ''
+    : 'http://localhost:8000';
 
+    
 export const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 15000,
