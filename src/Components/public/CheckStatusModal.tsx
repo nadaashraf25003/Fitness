@@ -24,13 +24,16 @@ export const CheckStatusModal: React.FC<CheckStatusModalProps> = ({ isOpen, onCl
 
     const allRequests = subscriptionService.getRequests();
     const cleanQuery = query.toLowerCase().trim();
+    const queryNumOnly = cleanQuery.replace(/[^0-9]/g, '');
 
-    const match = allRequests.find(
-      (r: any) =>
-        r.email?.toLowerCase() === cleanQuery ||
-        r.id?.toLowerCase() === cleanQuery ||
-        r.phone?.replace(/[^0-9]/g, '') === cleanQuery.replace(/[^0-9]/g, '')
-    );
+    const match = allRequests.find((r: any) => {
+      const emailMatch = r.email?.toLowerCase() === cleanQuery;
+      const idExactMatch = r.id?.toLowerCase() === cleanQuery;
+      const idCleanMatch = r.id?.replace('req-', '').toLowerCase() === cleanQuery.replace('req-', '');
+      const phoneMatch = queryNumOnly.length >= 7 && r.phone?.replace(/[^0-9]/g, '') === queryNumOnly;
+      const nameMatch = r.fullName?.toLowerCase() === cleanQuery;
+      return emailMatch || idExactMatch || idCleanMatch || phoneMatch || nameMatch;
+    });
 
     setFoundRequest(match || null);
     setSearched(true);

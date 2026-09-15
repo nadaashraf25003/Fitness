@@ -10,11 +10,21 @@ class PendingRequestListItem(BaseModel):
     duration: int
     paid_amount: float
     payment_method: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    plan_id: Optional[str] = None
+    plan_name: Optional[str] = None
+    requested_start_date: Optional[str] = None
+    status: Optional[str] = "pending"
+    notes: Optional[str] = None
+    created_at: Optional[str] = None
 
 
 class AdminMemberData(BaseModel):
     name: str
     member_id: Union[int, str]
+    email: Optional[str] = None
+    phone: Optional[str] = None
 
 
 class AdminSubscriptionData(BaseModel):
@@ -24,6 +34,9 @@ class AdminSubscriptionData(BaseModel):
     price: float
     paid_amount: float
     payment_method: str
+    plan_id: Optional[str] = None
+    plan_name: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class RequestDetailsResponse(BaseModel):
@@ -33,3 +46,4 @@ class RequestDetailsResponse(BaseModel):
     status: str
     member_data: AdminMemberData
     subscription_data: AdminSubscriptionData
+

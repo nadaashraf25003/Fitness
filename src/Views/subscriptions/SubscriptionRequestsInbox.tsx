@@ -66,11 +66,9 @@ export const SubscriptionRequestsInbox: React.FC = () => {
       render: (r) => (
         <div>
           <span className="font-bold text-brand-primary">{r.planName || 'Standard Tier'}</span>
-          {r.paidAmount !== undefined && (
-            <div className="text-xs text-text-muted">
-              ${r.paidAmount} via {r.paymentMethod || 'Card'}
-            </div>
-          )}
+          <div className="text-xs text-text-muted mt-0.5">
+            {r.duration ? `${r.duration} Mo • ` : ''}${r.paidAmount !== undefined ? `$${r.paidAmount}` : ''} via {r.paymentMethod || 'Card'}
+          </div>
         </div>
       ),
     },
@@ -237,7 +235,7 @@ export const SubscriptionRequestsInbox: React.FC = () => {
               <Badge variant={inspectingRequest.status}>{inspectingRequest.status}</Badge>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               <div className="p-3 rounded-xl bg-surface-card border border-border-subtle">
                 <span className="text-text-muted block">Selected Plan</span>
                 <span className="text-sm font-bold text-brand-primary mt-0.5 block">
@@ -245,9 +243,15 @@ export const SubscriptionRequestsInbox: React.FC = () => {
                 </span>
               </div>
               <div className="p-3 rounded-xl bg-surface-card border border-border-subtle">
+                <span className="text-text-muted block">Duration</span>
+                <span className="text-sm font-bold text-text-main mt-0.5 block">
+                  {inspectingRequest.duration ? `${inspectingRequest.duration} Month(s)` : '1 Month'}
+                </span>
+              </div>
+              <div className="p-3 rounded-xl bg-surface-card border border-border-subtle">
                 <span className="text-text-muted block">Amount Paid</span>
                 <span className="text-sm font-bold text-text-main mt-0.5 block">
-                  ${inspectingRequest.paidAmount || '79.99'}
+                  ${inspectingRequest.paidAmount !== undefined ? inspectingRequest.paidAmount : '0.00'}
                 </span>
               </div>
               <div className="p-3 rounded-xl bg-surface-card border border-border-subtle">
