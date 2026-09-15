@@ -32,7 +32,7 @@ class PaymentCreate(BaseModel):
 def get_all_payments(
     branch_id: int = 1,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(["admin", "staff"])),
+    _: User = Depends(require_roles(["admin", "staff", "reception"])),
 ):
     """Get all payments for a branch."""
     payments = db.query(Payment).filter(Payment.branch_id == branch_id).order_by(Payment.date.desc()).all()
