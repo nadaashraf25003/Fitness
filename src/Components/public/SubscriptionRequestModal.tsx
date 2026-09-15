@@ -66,6 +66,8 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
         phone: formData.phone,
         planId: selectedPlan.id,
         planName: selectedPlan.name,
+        paidAmount: selectedPlan.price,
+        paymentMethod: 'Cash — Pay at Reception',
         requestedStartDate: formData.requestedStartDate,
         notes: formData.notes,
       });
@@ -92,11 +94,11 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
     <Modal
       isOpen={isOpen}
       onClose={handleResetAndClose}
-      title={submittedRequest ? 'Subscription Requested!' : `Subscribe to GEM — ${selectedPlan?.name || 'Plan'}`}
+      title={submittedRequest ? 'Subscription Request Received!' : `Subscribe to GEM — ${selectedPlan?.name || 'Plan'}`}
       subtitle={
         submittedRequest
-          ? 'Your request has been received by our reception team.'
-          : 'Complete the inquiry form to start your membership onboarding.'
+          ? 'Please visit reception to complete your cash payment and activate your membership.'
+          : 'Submit your request now, then pay in cash at the reception desk.'
       }
       maxWidth="md"
     >
@@ -111,7 +113,7 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
               Welcome, {submittedRequest.fullName}!
             </h4>
             <p className="text-xs text-text-muted mt-1 max-w-xs mx-auto">
-              Your request for the <strong>{submittedRequest.planName}</strong> plan has been queued with ID:
+              Your request for the <strong>{submittedRequest.planName}</strong> plan has been received. Pay at reception to activate your membership.
               <span className="font-mono text-brand-primary block mt-1">{submittedRequest.id}</span>
             </p>
           </div>
@@ -124,6 +126,14 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
             <div className="flex justify-between">
               <span>Target Start Date:</span>
               <span className="text-text-main font-medium">{submittedRequest.requestedStartDate}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Payment:</span>
+              <span className="text-text-main font-medium">Cash at Reception</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Amount Due:</span>
+              <span className="text-brand-primary font-bold">${submittedRequest.paidAmount} USD</span>
             </div>
           </div>
 
@@ -138,6 +148,10 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
             <span className="font-bold text-brand-primary font-heading text-sm">
               {selectedPlan?.name} (${selectedPlan?.price}/mo)
             </span>
+          </div>
+
+          <div className="p-3 rounded-lg bg-brand-primary/10 border border-brand-primary/30 text-xs text-text-muted">
+            <span className="font-semibold text-text-main">Payment at reception:</span> Pay ${selectedPlan?.price} USD in cash when you visit. Your membership is activated once payment is confirmed.
           </div>
 
           <FormInput
@@ -203,7 +217,7 @@ export const SubscriptionRequestModal: React.FC<SubscriptionRequestModalProps> =
               className="w-full"
               isLoading={isSubmitting}
             >
-              Submit Membership Request
+              Submit Request — Pay at Reception
             </Button>
           </div>
         </form>
