@@ -219,25 +219,86 @@ export const subscriptionService = {
     try {
       const response = await apiClient.get(`/fitness/admin/requests/${branchId}`);
       if (Array.isArray(response.data)) {
-        const mapped: SubscriptionRequest[] = response.data.map((item: any) => ({
-          id: String(item.request_id || item.requestId || `req-${item.member_code}`),
-          fullName: item.member_name || item.memberName || 'Applicant',
-          email: item.email || `${(item.member_name || 'applicant').toLowerCase().replace(/\s+/g, '.')}@example.com`,
-          phone: item.phone || `0100000${item.member_code || '000'}`,
-          planId: `plan-${item.duration || 1}`,
-          planName: `${item.duration || 1}-Month Membership`,
-          requestedStartDate: new Date().toISOString().split('T')[0],
-          status: 'pending' as RequestStatus,
-          notes: `Type: ${item.request_type || item.requestType} • Paid: $${item.paid_amount || item.paidAmount} via ${item.payment_method || item.paymentMethod}`,
-          createdAt: new Date().toISOString(),
-          requestType: item.request_type || item.requestType,
-          paidAmount: item.paid_amount || item.paidAmount,
-          paymentMethod: item.payment_method || item.paymentMethod,
-          duration: item.duration,
-          memberCode: item.member_code || item.memberCode,
-        }));
-        setStoredItem(REQUESTS_KEY, mapped);
-        return mapped;
+        const plans = this.getPlans();
+        const mapped: SubscriptionRequest[] = response.data.map((item: any) => {
+          const matchedPlan = plans.find(
+            (p) =>
+              (item.plan_id && p.id === item.plan_id) ||
+              (item.plan_name && p.name.toLowerCase() === item.plan_name.toLowerCase()) ||
+              p.durationMonths === item.duration
+          );
+
+          const planName =
+            item.plan_name ||
+            matchedPlan?.name ||
+            (item.duration === 1
+              ? 'Basic Monthly'
+              : item.duration === 3
+              ? 'Pro 3-Month'
+              : item.duration === 12
+              ? 'VIP Annual'
+              : `${item.duration || 1}-Month Membership`);
+
+          const planId = item.plan_id || matchedPlan?.id || `plan-${item.duration || 1}`;
+
+          const idStr = String(
+            item.request_id !== undefined && item.request_id !== null
+              ? (String(item.request_id).startsWith('req-') ? item.request_id : `req-${item.request_id}`)
+              : item.requestId !== undefined && item.requestId !== null
+              ? (String(item.requestId).startsWith('req-') ? item.requestId : `req-${item.requestId}`)
+              : `req-${item.member_code || Date.now()}`
+          );
+
+          return {
+            id: idStr,
+            fullName: item.member_name || item.memberName || item.full_name || 'Applicant',
+            email: item.email || (item.member_code ? `member${item.member_code}@example.com` : 'applicant@example.com'),
+            phone: item.phone || (item.member_code ? `0100000${item.member_code}` : '01000000000'),
+            planId,
+            planName,
+            requestedStartDate:
+              item.requested_start_date ||
+              item.requestedStartDate ||
+              item.start_date ||
+              new Date().toISOString().split('T')[0],
+            status: (item.status || 'pending') as RequestStatus,
+            notes:
+              item.notes !== undefined && item.notes !== null && item.notes !== ''
+                ? item.notes
+                : `Type: ${item.request_type || item.requestType || 'new'} • Paid: $${item.paid_amount ?? item.paidAmount ?? 0} via ${item.payment_method || item.paymentMethod || 'Credit Card'}`,
+            createdAt: item.created_at || item.createdAt || new Date().toISOString(),
+            requestType: item.request_type || item.requestType || 'new',
+            paidAmount:
+              item.paid_amount !== undefined && item.paid_amount !== null
+                ? item.paid_amount
+                : item.paidAmount !== undefined && item.paidAmount !== null
+                ? item.paidAmount
+                : matchedPlan?.price ?? 0,
+            paymentMethod: item.payment_method || item.paymentMethod || 'Credit Card',
+            duration: item.duration ?? matchedPlan?.durationMonths ?? 1,
+            memberCode: item.member_code || item.memberCode,
+          };
+        });
+
+        // Merge with locally stored requests (for any offline or freshly queued submissions)
+        const localRequests = getStoredItem<SubscriptionRequest[]>(REQUESTS_KEY, initialRequests);
+        const merged: SubscriptionRequest[] = [...mapped];
+
+        for (const localReq of localRequests) {
+          const cleanLocalId = localReq.id.replace('req-', '');
+          const exists = merged.some(
+            (m) =>
+              m.id === localReq.id ||
+              m.id.replace('req-', '') === cleanLocalId ||
+              (m.phone === localReq.phone && m.planName === localReq.planName && m.status === localReq.status)
+          );
+          if (!exists) {
+            merged.push(localReq);
+          }
+        }
+
+        setStoredItem(REQUESTS_KEY, merged);
+        return merged;
       }
     } catch (error) {
       console.warn('Backend API /fitness/admin/requests unavailable, using local cache:', error);
@@ -261,22 +322,37 @@ export const subscriptionService = {
     requests.unshift(newRequest);
     setStoredItem(REQUESTS_KEY, requests);
 
-    // Forward to backend API asynchronously
+    // Forward to backend API asynchronously with complete payload
     apiClient
       .post('/fitness/request', {
         request_type: request.requestType || 'new',
         branch_id: request.branchId || 1,
         member: {
           name: request.fullName,
+          email: request.email,
           phone: request.phone,
+          notes: request.notes,
         },
         subscription: {
           start_date: request.requestedStartDate || new Date().toISOString().split('T')[0],
           duration: request.duration || 1,
-          price: request.paidAmount || 79.99,
-          paid_amount: request.paidAmount || 79.99,
+          price: request.paidAmount !== undefined ? request.paidAmount : 79.99,
+          paid_amount: request.paidAmount !== undefined ? request.paidAmount : 79.99,
           payment_method: request.paymentMethod || 'Credit Card',
+          plan_id: request.planId,
+          plan_name: request.planName,
+          notes: request.notes,
         },
+      })
+      .then((res) => {
+        if (res.data && res.data.request_id) {
+          const current = getStoredItem<SubscriptionRequest[]>(REQUESTS_KEY, initialRequests);
+          const idx = current.findIndex((r) => r.id === newRequest.id);
+          if (idx !== -1) {
+            current[idx].id = `req-${res.data.request_id}`;
+            setStoredItem(REQUESTS_KEY, current);
+          }
+        }
       })
       .catch((err) => {
         console.warn('Backend API POST /fitness/request background sync error:', err);
@@ -317,6 +393,7 @@ export const subscriptionService = {
         subscriptionId: `sub-${req.planId || 'pro'}`,
         planName: req.planName || 'Pro 3-Month',
         status: 'active',
+        note: req.notes,
       });
       return true;
     }

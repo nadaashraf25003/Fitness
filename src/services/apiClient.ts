@@ -34,14 +34,22 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response Interceptor: Global 401 Unauthorized handling & auto-redirect
+// Response Interceptor: 401 Unauthorized handling
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('gym_jwt_token');
       localStorage.removeItem('gym_current_user');
-      if (window.location.pathname !== '/login') {
+      const pathname = window.location.pathname;
+      const isProtectedRoute =
+        pathname.startsWith('/attendance') ||
+        pathname.startsWith('/trainers') ||
+        pathname.startsWith('/payments') ||
+        pathname.startsWith('/subscriptions') ||
+        pathname.startsWith('/admin');
+
+      if (isProtectedRoute && pathname !== '/login') {
         window.location.href = '/login';
       }
     }
