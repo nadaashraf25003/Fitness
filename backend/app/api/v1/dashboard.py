@@ -22,7 +22,7 @@ router = APIRouter(tags=["Dashboard Module"])
 def get_branch_dashboard(
     branch_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(["admin", "staff"])),
+    _: User = Depends(require_roles(["admin", "staff", "reception"])),
 ):
     """Admin Dashboard: Get main summary statistics for a specific branch."""
     today_str = date.today().strftime("%Y-%m-%d")

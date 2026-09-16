@@ -6,3 +6,4 @@ export * from './trainerService';
 export * from './attendanceService';
 export * from './measurementService';
 export * from './paymentService';
+export * from './dashboardService';

@@ -1,5 +1,6 @@
 from typing import List, Optional
 from datetime import datetime, timezone, date
+# pyrefly: ignore [missing-import]
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
@@ -44,26 +45,34 @@ def get_all_attendance(
 
 @router.get("/today", response_model=List[AttendanceResponse])
 def get_today_attendance(
+    branch_id: Optional[int] = None,
     db: Session = Depends(get_db),
     _: User = Depends(require_roles(["admin", "staff", "reception"])),
 ):
     """List all attendance check-ins recorded for today."""
     today_str = date.today().strftime("%Y-%m-%d")
-    return db.query(Attendance).filter(Attendance.date == today_str).order_by(Attendance.created_at.desc()).all()
+    query = db.query(Attendance).filter(Attendance.date == today_str)
+    if branch_id:
+        query = query.filter(Attendance.branch_id == branch_id)
+    return query.order_by(Attendance.created_at.desc()).all()
 
 
 @router.get("/stats", response_model=AttendanceStats)
 def get_attendance_stats(
+    branch_id: Optional[int] = None,
     db: Session = Depends(get_db),
     _: User = Depends(require_roles(["admin", "staff", "reception"])),
 ):
     """Get high-level attendance metrics for dashboard."""
     today_str = date.today().strftime("%Y-%m-%d")
-    today_logs = db.query(Attendance).filter(Attendance.date == today_str).all()
+    query = db.query(Attendance)
+    if branch_id:
+        query = query.filter(Attendance.branch_id == branch_id)
+    today_logs = query.filter(Attendance.date == today_str).all()
     
     checked_in_today = len(today_logs)
     active_now = len([log for log in today_logs if not log.check_out_time])
-    total_monthly = db.query(Attendance).count()
+    total_monthly = query.count()
 
     return AttendanceStats(
         checked_in_today=checked_in_today,

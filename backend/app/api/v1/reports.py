@@ -173,7 +173,7 @@ def get_income_report(
 def get_top_members_report(
     branch_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(["admin", "staff"])),
+    _: User = Depends(require_roles(["admin", "staff", "reception"])),
 ):
     """Returns the top 10 members with highest number of attendance records ordered descending."""
     results = (
@@ -209,7 +209,7 @@ def get_top_members_report(
 def get_expired_subscriptions_report(
     branch_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles(["admin", "staff"])),
+    _: User = Depends(require_roles(["admin", "staff", "reception"])),
 ):
     """Returns members whose subscription is expired and who do not have an active or scheduled subscription."""
     today_str = date.today().strftime("%Y-%m-%d")
