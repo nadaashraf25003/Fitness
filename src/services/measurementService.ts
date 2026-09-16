@@ -52,7 +52,7 @@ export const measurementService = {
   /**
    * Record a new measurement session directly in backend API
    */
-  async create(measurement: Omit<BodyMeasurement, 'id'>): Promise<BodyMeasurement> {
+  async create(measurement: Omit<BodyMeasurement, 'id' | 'bmi' | 'bmiCategory'> & Partial<Pick<BodyMeasurement, 'bmi' | 'bmiCategory'>>): Promise<BodyMeasurement> {
     const { bmi, category } = calculateBmi(measurement.weightKg, measurement.heightCm);
 
     try {
