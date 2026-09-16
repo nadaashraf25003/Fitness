@@ -14,8 +14,7 @@ export const PaymentsPage: React.FC = () => {
   const { selectedBranch: branchId, setSelectedBranch, branchName, branchLocation, branches } = useBranch();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentRecord | null>(null);
-  const { payments, loading, error, addPayment } = usePayments(branchId);
-
+  const { payments, loading, error, addPayment, refresh } = usePayments(branchId);
 
   const columns: Column<PaymentRecord>[] = [
     {
