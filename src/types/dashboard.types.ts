@@ -1,24 +1,25 @@
-export interface TodaySubscriptions {
-  new: number;
-  renew: number;
-  extend: number;
-  cancel: number;
-}
-
-export interface TodayIncome {
-  cash: number;
-  visa: number;
-  transfer: number;
-  total: number;
-}
-
+/**
+ * Flat dashboard statistics returned by GET /fitness/admin/dashboard/{branch_id}
+ *
+ * Shape:
+ * {
+ *   "members": 0,
+ *   "active_subscriptions": 0,
+ *   "pending_requests": 0,
+ *   "today_subscriptions": 0,
+ *   "today_attendance": 0,
+ *   "today_income": 0
+ * }
+ */
 export interface DashboardStats {
   members: number;
   active_subscriptions: number;
   pending_requests: number;
-  today_subscriptions: TodaySubscriptions;
+  /** Total count of approved subscriptions that started today */
+  today_subscriptions: number;
   today_attendance: number;
-  today_income: TodayIncome;
+  /** Total income collected today (all payment methods combined) */
+  today_income: number;
 }
 
 export interface TopMemberItem {

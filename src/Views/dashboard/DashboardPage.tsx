@@ -14,11 +14,7 @@ import {
   Building2,
   CheckCircle2,
   Clock,
-  CreditCard,
-  Wallet,
-  Landmark,
   Trophy,
-  Sparkles,
   AlertCircle,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -30,7 +26,7 @@ import { AttendanceStats, CheckInEntry } from '../../types/attendance.types';
 export const DashboardPage: React.FC = () => {
   const { user, isAdmin } = useAuth();
 
-  // State management
+  // ── State ─────────────────────────────────────────────────────────────────
   const [selectedBranch, setSelectedBranch] = useState<number>(1);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [attendanceStats, setAttendanceStats] = useState<AttendanceStats | null>(null);
@@ -42,64 +38,59 @@ export const DashboardPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
-  // Data fetching
-  const loadDashboardData = useCallback(async (branchId: number, isSilentRefresh = false) => {
-    if (!isSilentRefresh) {
-      setIsLoading(true);
-    } else {
-      setIsRefreshing(true);
-    }
-    setError(null);
+  // ── Data fetching ─────────────────────────────────────────────────────────
+  const loadDashboardData = useCallback(
+    async (branchId: number, isSilentRefresh = false) => {
+      if (!isSilentRefresh) setIsLoading(true);
+      else setIsRefreshing(true);
+      setError(null);
 
-    try {
-      const [
-        dashStats,
-        attStats,
-        todayAtt,
-        topMems,
-        revTrend,
-      ] = await Promise.all([
-        dashboardService.getDashboard(branchId),
-        dashboardService.getAttendanceStats(branchId),
-        dashboardService.getTodayAttendance(branchId),
-        dashboardService.getTopMembers(branchId),
-        dashboardService.getRevenueTrend(branchId),
-      ]);
+      try {
+        const [dashStats, attStats, todayAtt, topMems, revTrend] = await Promise.all([
+          dashboardService.getDashboard(branchId),
+          dashboardService.getAttendanceStats(branchId),
+          dashboardService.getTodayAttendance(branchId),
+          dashboardService.getTopMembers(branchId),
+          dashboardService.getRevenueTrend(branchId),
+        ]);
 
-      setStats(dashStats);
-      setAttendanceStats(attStats);
-      setRecentCheckIns(todayAtt.slice(0, 5));
-      setTopMembers(topMems);
-      setRevenueData(revTrend);
-      setLastUpdated(new Date());
-    } catch (err: any) {
-      console.error('Error loading dashboard data:', err);
-      setError(err?.message || 'Failed to synchronize with backend server.');
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, []);
+        setStats(dashStats);
+        setAttendanceStats(attStats);
+        setRecentCheckIns(todayAtt.slice(0, 5));
+        setTopMembers(topMems);
+        setRevenueData(revTrend);
+        setLastUpdated(new Date());
+      } catch (err: any) {
+        console.error('[DashboardPage] Failed to load dashboard data:', err);
+        setError(err?.message || 'Failed to synchronize with backend server.');
+      } finally {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     loadDashboardData(selectedBranch);
   }, [selectedBranch, loadDashboardData]);
 
-  // Derived Donut Chart data from backend stats
-  const activeSubs = stats?.active_subscriptions || 0;
-  const pendingReqs = stats?.pending_requests || 0;
-  const totalMems = stats?.members || 0;
-  const otherOrExpired = Math.max(totalMems - activeSubs - pendingReqs, 0);
+  // ── Derived donut chart data ───────────────────────────────────────────────
+  // Backend returns flat numbers: members, active_subscriptions, pending_requests
+  const activeSubs = stats?.active_subscriptions ?? 0;
+  const pendingReqs = stats?.pending_requests ?? 0;
+  const totalMems = stats?.members ?? 0;
+  const expiredOrOther = Math.max(totalMems - activeSubs - pendingReqs, 0);
 
   const membershipDonutData = [
     { label: 'Active', value: activeSubs, color: '#22C55E' },
     { label: 'Pending', value: pendingReqs, color: '#F59E0B' },
-    { label: 'Expired / Other', value: otherOrExpired, color: '#EF4444' },
+    { label: 'Expired / Other', value: expiredOrOther, color: '#EF4444' },
   ];
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Page Header with Branch Selector & Refresh */}
+      {/* ── Page Header ──────────────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface p-6 rounded-2xl border border-border-subtle shadow-sm relative overflow-hidden">
         {/* Glow accent */}
         <div className="absolute top-0 right-0 w-64 h-32 bg-brand-primary/10 blur-3xl pointer-events-none" />
@@ -111,7 +102,12 @@ export const DashboardPage: React.FC = () => {
               Live Backend Connected
             </span>
             <span className="text-[11px] text-text-subtle hidden sm:inline">
-              Synced {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              Synced{' '}
+              {lastUpdated.toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+              })}
             </span>
           </div>
 
@@ -133,8 +129,12 @@ export const DashboardPage: React.FC = () => {
               aria-label="Gym Branch Location"
               className="bg-transparent text-xs sm:text-sm font-semibold text-text-main focus:outline-none pr-3 py-1.5 cursor-pointer"
             >
-              <option value={1} className="bg-surface text-text-main">Branch 1: Main Branch (Khanqah)</option>
-              <option value={2} className="bg-surface text-text-main">Branch 2: Downtown Branch (City Center)</option>
+              <option value={1} className="bg-surface text-text-main">
+                Branch 1: Main Branch (Khanqah)
+              </option>
+              <option value={2} className="bg-surface text-text-main">
+                Branch 2: Downtown Branch (City Center)
+              </option>
             </select>
           </div>
 
@@ -160,7 +160,7 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Error notification banner if any */}
+      {/* ── Error Banner ─────────────────────────────────────────────────── */}
       {error && (
         <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-between text-rose-400 text-xs sm:text-sm">
           <div className="flex items-center gap-3">
@@ -176,12 +176,15 @@ export const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* KPI Stat Cards Grid */}
+      {/* ── KPI Stat Cards ────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {isLoading && !stats ? (
           // Skeleton loaders
           [...Array(4)].map((_, i) => (
-            <div key={i} className="bg-surface p-6 rounded-2xl border border-border-subtle animate-pulse space-y-4">
+            <div
+              key={i}
+              className="bg-surface p-6 rounded-2xl border border-border-subtle animate-pulse space-y-4"
+            >
               <div className="h-4 bg-surface-card rounded w-24" />
               <div className="h-8 bg-surface-card rounded w-16" />
               <div className="h-3 bg-surface-card rounded w-32" />
@@ -189,19 +192,29 @@ export const DashboardPage: React.FC = () => {
           ))
         ) : (
           <>
+            {/* Total Members */}
             <StatCard
-              title="Total Active Members"
-              value={stats?.active_subscriptions ?? 0}
-              subtitle={`${stats?.members ?? 0} registered in branch`}
+              title="Total Members"
+              value={stats?.members ?? 0}
+              subtitle={`${stats?.active_subscriptions ?? 0} active subscriptions`}
               icon={<Users className="w-5 h-5" />}
               trend={{
-                value: `${Math.round(((stats?.active_subscriptions || 0) / Math.max(stats?.members || 1, 1)) * 100)}% active`,
+                value:
+                  (stats?.members ?? 0) > 0
+                    ? `${Math.round(
+                        ((stats?.active_subscriptions ?? 0) /
+                          Math.max(stats?.members ?? 1, 1)) *
+                          100
+                      )}% active rate`
+                    : 'No members yet',
                 isPositive: true,
               }}
             />
+
+            {/* Today's Check-Ins */}
             <StatCard
               title="Today's Check-Ins"
-              value={stats?.today_attendance ?? attendanceStats?.checkedInToday ?? 0}
+              value={stats?.today_attendance ?? 0}
               subtitle={`Currently inside: ${attendanceStats?.activeNow ?? 0}`}
               icon={<ClipboardCheck className="w-5 h-5" />}
               trend={{
@@ -209,6 +222,8 @@ export const DashboardPage: React.FC = () => {
                 isPositive: true,
               }}
             />
+
+            {/* Pending Inquiries */}
             <StatCard
               title="Pending Inquiries"
               value={stats?.pending_requests ?? 0}
@@ -216,17 +231,25 @@ export const DashboardPage: React.FC = () => {
               icon={<Inbox className="w-5 h-5" />}
               trend={
                 (stats?.pending_requests ?? 0) > 0
-                  ? { value: `${stats?.pending_requests} need review`, isPositive: false }
+                  ? {
+                      value: `${stats?.pending_requests} need review`,
+                      isPositive: false,
+                    }
                   : { value: 'All caught up', isPositive: true }
               }
             />
+
+            {/* Today's Revenue — flat number from API */}
             <StatCard
               title="Today's Revenue"
-              value={`$${(stats?.today_income?.total ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-              subtitle={`Cash: $${stats?.today_income?.cash ?? 0} | Visa: $${stats?.today_income?.visa ?? 0}`}
+              value={`$${(stats?.today_income ?? 0).toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`}
+              subtitle={`${stats?.today_subscriptions ?? 0} subscriptions renewed today`}
               icon={<DollarSign className="w-5 h-5" />}
               trend={{
-                value: `+$${stats?.today_income?.transfer ?? 0} transfer`,
+                value: `+${stats?.today_subscriptions ?? 0} new plans today`,
                 isPositive: true,
               }}
             />
@@ -234,58 +257,68 @@ export const DashboardPage: React.FC = () => {
         )}
       </div>
 
-      {/* Today's Income & Subscription Breakdown Strip */}
+      {/* ── Today's Quick Stats Strip ─────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-surface p-4 rounded-xl border border-border-subtle flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0">
-            <Wallet className="w-5 h-5" />
-          </div>
-          <div className="overflow-hidden">
-            <span className="text-[11px] font-medium text-text-subtle uppercase block">Cash Collected</span>
-            <span className="text-base font-bold text-text-main">
-              ${(stats?.today_income?.cash ?? 0).toFixed(2)}
-            </span>
-          </div>
-        </div>
-
-        <div className="bg-surface p-4 rounded-xl border border-border-subtle flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center flex-shrink-0">
-            <CreditCard className="w-5 h-5" />
-          </div>
-          <div className="overflow-hidden">
-            <span className="text-[11px] font-medium text-text-subtle uppercase block">Visa / POS</span>
-            <span className="text-base font-bold text-text-main">
-              ${(stats?.today_income?.visa ?? 0).toFixed(2)}
-            </span>
-          </div>
-        </div>
-
-        <div className="bg-surface p-4 rounded-xl border border-border-subtle flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center flex-shrink-0">
-            <Landmark className="w-5 h-5" />
-          </div>
-          <div className="overflow-hidden">
-            <span className="text-[11px] font-medium text-text-subtle uppercase block">Bank Transfer</span>
-            <span className="text-base font-bold text-text-main">
-              ${(stats?.today_income?.transfer ?? 0).toFixed(2)}
-            </span>
-          </div>
-        </div>
-
+        {/* Total Members */}
         <div className="bg-surface p-4 rounded-xl border border-border-subtle flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-brand-primary/10 text-brand-primary flex items-center justify-center flex-shrink-0">
-            <Sparkles className="w-5 h-5" />
+            <Users className="w-5 h-5" />
           </div>
           <div className="overflow-hidden">
-            <span className="text-[11px] font-medium text-text-subtle uppercase block">Today's Plans</span>
+            <span className="text-[11px] font-medium text-text-subtle uppercase block">
+              Total Members
+            </span>
+            <span className="text-base font-bold text-text-main">{stats?.members ?? 0}</span>
+          </div>
+        </div>
+
+        {/* Active Subscriptions */}
+        <div className="bg-surface p-4 rounded-xl border border-border-subtle flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+          <div className="overflow-hidden">
+            <span className="text-[11px] font-medium text-text-subtle uppercase block">
+              Active Subs
+            </span>
             <span className="text-base font-bold text-text-main">
-              +{(stats?.today_subscriptions?.new ?? 0) + (stats?.today_subscriptions?.renew ?? 0)} Renewed
+              {stats?.active_subscriptions ?? 0}
+            </span>
+          </div>
+        </div>
+
+        {/* Today Attendance */}
+        <div className="bg-surface p-4 rounded-xl border border-border-subtle flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center flex-shrink-0">
+            <Clock className="w-5 h-5" />
+          </div>
+          <div className="overflow-hidden">
+            <span className="text-[11px] font-medium text-text-subtle uppercase block">
+              Today Attendance
+            </span>
+            <span className="text-base font-bold text-text-main">
+              {stats?.today_attendance ?? 0}
+            </span>
+          </div>
+        </div>
+
+        {/* Today Income */}
+        <div className="bg-surface p-4 rounded-xl border border-border-subtle flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center flex-shrink-0">
+            <DollarSign className="w-5 h-5" />
+          </div>
+          <div className="overflow-hidden">
+            <span className="text-[11px] font-medium text-text-subtle uppercase block">
+              Today Income
+            </span>
+            <span className="text-base font-bold text-text-main">
+              ${(stats?.today_income ?? 0).toFixed(2)}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Charts Section */}
+      {/* ── Charts Section ────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <BarChart
@@ -304,7 +337,7 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Live Activity Feed & Frequent Attendees Grid */}
+      {/* ── Live Activity Feed & Leaderboard ─────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Live Check-ins Today */}
         <div className="bg-surface rounded-2xl border border-border-subtle p-6 shadow-sm flex flex-col justify-between">
@@ -358,7 +391,10 @@ export const DashboardPage: React.FC = () => {
                     <div className="text-right">
                       <span className="inline-flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                         <CheckCircle2 className="w-3 h-3" />
-                        {new Date(item.checkInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(item.checkInTime).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
                       </span>
                     </div>
                   </div>
@@ -368,8 +404,14 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           <div className="mt-4 pt-3 border-t border-border-subtle flex items-center justify-between text-xs text-text-subtle">
-            <span>Currently Active: <strong className="text-emerald-400">{attendanceStats?.activeNow ?? 0}</strong></span>
-            <span>Total Today: <strong className="text-text-main">{stats?.today_attendance ?? 0}</strong></span>
+            <span>
+              Currently Active:{' '}
+              <strong className="text-emerald-400">{attendanceStats?.activeNow ?? 0}</strong>
+            </span>
+            <span>
+              Total Today:{' '}
+              <strong className="text-text-main">{stats?.today_attendance ?? 0}</strong>
+            </span>
           </div>
         </div>
 
@@ -398,7 +440,8 @@ export const DashboardPage: React.FC = () => {
                     'bg-slate-300/20 text-slate-200 border-slate-300/30',
                     'bg-amber-700/20 text-amber-600 border-amber-700/30',
                   ];
-                  const rankClass = index < 3 ? medalColors[index] : 'bg-surface-card text-text-subtle border-border-subtle';
+                  const rankClass =
+                    index < 3 ? medalColors[index] : 'bg-surface-card text-text-subtle border-border-subtle';
 
                   return (
                     <div
@@ -434,21 +477,24 @@ export const DashboardPage: React.FC = () => {
 
           <div className="mt-4 pt-3 border-t border-border-subtle flex items-center justify-between text-xs text-text-subtle">
             <span>Ranking metric: Check-in frequency</span>
-            <Link to={PATHS.PAYMENTS} className="text-brand-primary hover:underline flex items-center gap-1">
+            <Link
+              to={PATHS.PAYMENTS}
+              className="text-brand-primary hover:underline flex items-center gap-1"
+            >
               View reports <ArrowUpRight className="w-3.5 h-3.5" />
             </Link>
           </div>
         </div>
       </div>
 
-      {/* Quick Navigation & Team Modules Container */}
+      {/* ── Quick Navigation ──────────────────────────────────────────────── */}
       <div className="bg-surface rounded-2xl border border-border-subtle p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-bold font-heading text-text-main flex items-center gap-2">
             <Activity className="w-4 h-4 text-brand-primary" />
             Operational Quick Navigation
           </h3>
-          <span className="text-xs text-text-subtle">Staff & Management Quicklinks</span>
+          <span className="text-xs text-text-subtle">Staff &amp; Management Quicklinks</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -471,9 +517,9 @@ export const DashboardPage: React.FC = () => {
           >
             <div>
               <div className="text-sm font-semibold text-text-main group-hover:text-brand-primary transition-colors">
-                Trainers & Schedules
+                Trainers &amp; Schedules
               </div>
-              <div className="text-xs text-text-muted mt-0.5">Coach profiles & class bookings</div>
+              <div className="text-xs text-text-muted mt-0.5">Coach profiles &amp; class bookings</div>
             </div>
             <ArrowUpRight className="w-4 h-4 text-text-subtle group-hover:text-brand-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
           </Link>
@@ -499,9 +545,9 @@ export const DashboardPage: React.FC = () => {
               >
                 <div>
                   <div className="text-sm font-semibold text-text-main group-hover:text-brand-primary transition-colors">
-                    Subscriptions & Members
+                    Subscriptions &amp; Members
                   </div>
-                  <div className="text-xs text-text-muted mt-0.5">Member CRUD & plan assignment</div>
+                  <div className="text-xs text-text-muted mt-0.5">Member CRUD &amp; plan assignment</div>
                 </div>
                 <ArrowUpRight className="w-4 h-4 text-text-subtle group-hover:text-brand-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
               </Link>
@@ -525,9 +571,9 @@ export const DashboardPage: React.FC = () => {
               >
                 <div>
                   <div className="text-sm font-semibold text-text-main group-hover:text-brand-primary transition-colors">
-                    Payments & Billing
+                    Payments &amp; Billing
                   </div>
-                  <div className="text-xs text-text-muted mt-0.5">Transaction ledgers & receipts</div>
+                  <div className="text-xs text-text-muted mt-0.5">Transaction ledgers &amp; receipts</div>
                 </div>
                 <ArrowUpRight className="w-4 h-4 text-text-subtle group-hover:text-brand-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
               </Link>
